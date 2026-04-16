@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   title: "Agentora — AI Agent 마켓플레이스",
   description: "검증된 전문가들이 만든 AI Agent를 맛보고 도입하세요. B2B 전문 AI Agent 마켓플레이스",
   icons: {
-    icon: "/favicon.ico",
+    icon: "data:,",
   },
 };
 
