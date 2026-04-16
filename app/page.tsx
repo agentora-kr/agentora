@@ -12,12 +12,7 @@ function ComingSoonPopup({ onClose }: { onClose: () => void }) {
           해당 기능은 현재 준비 중이에요.<br />
           곧 더 나은 모습으로 찾아올게요!
         </p>
-        <button
-          onClick={onClose}
-          className="w-full py-3 bg-blue-600 text-white font-bold rounded-full hover:bg-blue-700 transition-all text-sm"
-        >
-          확인
-        </button>
+        <button onClick={onClose} className="w-full py-3 bg-blue-600 text-white font-bold rounded-full hover:bg-blue-700 transition-all text-sm">확인</button>
       </div>
     </div>
   );
@@ -25,7 +20,7 @@ function ComingSoonPopup({ onClose }: { onClose: () => void }) {
 
 export default function Home() {
   const [showPopup, setShowPopup] = useState(false);
-
+  const [menuOpen, setMenuOpen] = useState(false);
   const popup = () => setShowPopup(true);
 
   return (
@@ -33,53 +28,79 @@ export default function Home() {
       {showPopup && <ComingSoonPopup onClose={() => setShowPopup(false)} />}
 
       {/* 네비게이션 */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-100 h-16 flex items-center justify-between px-10">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-100 h-16 flex items-center justify-between px-5 md:px-10">
         <Link href="/" className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-orange-500 flex items-center justify-center text-white text-sm">🤖</div>
           <span className="text-xl font-extrabold text-gray-900">Agentora</span>
         </Link>
-        <div className="flex items-center gap-6">
+
+        {/* 데스크탑 메뉴 */}
+        <div className="hidden md:flex items-center gap-6">
           <Link href="/agents" className="text-sm font-medium text-gray-500 hover:text-blue-600">전체 Agent</Link>
           <button onClick={popup} className="text-sm font-medium text-gray-500 hover:text-blue-600">카테고리</button>
           <Link href="/register" className="text-sm font-medium text-gray-500 hover:text-blue-600">전문가</Link>
           <button onClick={popup} className="text-sm font-medium text-gray-500 hover:text-blue-600">가격 안내</button>
         </div>
-        <div className="flex items-center gap-3">
-          <Link href="/login">
-            <button className="px-5 py-2 rounded-full text-sm font-semibold border border-gray-200 text-gray-600 hover:border-blue-500 hover:text-blue-600 transition-all">로그인</button>
-          </Link>
-          <Link href="/login">
-            <button className="px-5 py-2 rounded-full text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-all shadow-md">무료 시작</button>
-          </Link>
+
+        <div className="hidden md:flex items-center gap-3">
+          <Link href="/login"><button className="px-5 py-2 rounded-full text-sm font-semibold border border-gray-200 text-gray-600 hover:border-blue-500 hover:text-blue-600 transition-all">로그인</button></Link>
+          <Link href="/login"><button className="px-5 py-2 rounded-full text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-all shadow-md">무료 시작</button></Link>
         </div>
+
+        {/* 모바일 햄버거 */}
+        <button className="md:hidden flex flex-col gap-1.5 p-2" onClick={() => setMenuOpen(!menuOpen)}>
+          <span className={`block w-6 h-0.5 bg-gray-700 transition-all ${menuOpen ? "rotate-45 translate-y-2" : ""}`}></span>
+          <span className={`block w-6 h-0.5 bg-gray-700 transition-all ${menuOpen ? "opacity-0" : ""}`}></span>
+          <span className={`block w-6 h-0.5 bg-gray-700 transition-all ${menuOpen ? "-rotate-45 -translate-y-2" : ""}`}></span>
+        </button>
       </nav>
 
+      {/* 모바일 메뉴 */}
+      {menuOpen && (
+        <div className="fixed top-16 left-0 right-0 z-40 bg-white border-b border-gray-100 shadow-lg md:hidden">
+          <div className="flex flex-col p-4 gap-4">
+            <Link href="/agents" onClick={() => setMenuOpen(false)} className="text-sm font-semibold text-gray-700 py-2 border-b border-gray-100">전체 Agent</Link>
+            <button onClick={() => { setMenuOpen(false); popup(); }} className="text-sm font-semibold text-gray-700 py-2 border-b border-gray-100 text-left">카테고리</button>
+            <Link href="/register" onClick={() => setMenuOpen(false)} className="text-sm font-semibold text-gray-700 py-2 border-b border-gray-100">전문가</Link>
+            <button onClick={() => { setMenuOpen(false); popup(); }} className="text-sm font-semibold text-gray-700 py-2 border-b border-gray-100 text-left">가격 안내</button>
+            <div className="flex gap-3 pt-2">
+              <Link href="/login" className="flex-1" onClick={() => setMenuOpen(false)}>
+                <button className="w-full py-2.5 rounded-full text-sm font-semibold border border-gray-200 text-gray-600">로그인</button>
+              </Link>
+              <Link href="/login" className="flex-1" onClick={() => setMenuOpen(false)}>
+                <button className="w-full py-2.5 rounded-full text-sm font-semibold bg-blue-600 text-white">무료 시작</button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 히어로 섹션 */}
-      <section className="pt-40 pb-24 px-10 bg-gradient-to-br from-blue-50 via-white to-orange-50">
+      <section className="pt-28 md:pt-40 pb-16 md:pb-24 px-5 md:px-10 bg-gradient-to-br from-blue-50 via-white to-orange-50">
         <div className="max-w-5xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 bg-white border border-blue-100 rounded-full px-4 py-1.5 text-sm font-semibold text-blue-600 mb-8 shadow-sm">
+          <div className="inline-flex items-center gap-2 bg-white border border-blue-100 rounded-full px-4 py-1.5 text-xs md:text-sm font-semibold text-blue-600 mb-6 md:mb-8 shadow-sm">
             <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
             지금 AI Agent 마켓플레이스 오픈 준비 중이에요
           </div>
-          <h1 className="text-5xl font-extrabold text-gray-900 leading-tight tracking-tight mb-6">
+          <h1 className="text-3xl md:text-5xl font-extrabold text-gray-900 leading-tight tracking-tight mb-4 md:mb-6">
             필요한 AI Agent를<br />
             <span className="text-blue-600">직접 맛보고</span> 도입하세요
           </h1>
-          <p className="text-lg text-gray-500 mb-10 leading-relaxed">
+          <p className="text-base md:text-lg text-gray-500 mb-8 md:mb-10 leading-relaxed">
             검증된 전문가들이 만든 AI Agent를 체험해보고,<br />
             우리 회사에 꼭 맞는 솔루션만 골라 구독하세요.
           </p>
 
           {/* 검색바 */}
-          <div className="flex items-center bg-white rounded-full shadow-xl border border-blue-100 px-5 py-2 max-w-2xl mx-auto mb-5">
-            <span className="text-gray-400 mr-3">🔍</span>
+          <div className="flex items-center bg-white rounded-full shadow-xl border border-blue-100 px-4 md:px-5 py-2 max-w-2xl mx-auto mb-5">
+            <span className="text-gray-400 mr-2 md:mr-3">🔍</span>
             <input
               type="text"
-              placeholder="어떤 업무를 자동화하고 싶으세요? (예: 계약서 검토, 매출 분석...)"
-              className="flex-1 outline-none text-sm text-gray-700 bg-transparent"
+              placeholder="어떤 업무를 자동화하고 싶으세요?"
+              className="flex-1 outline-none text-sm text-gray-700 bg-transparent min-w-0"
             />
             <Link href="/agents">
-              <button className="ml-3 px-5 py-2 bg-blue-600 text-white text-sm font-bold rounded-full hover:bg-blue-700 transition-all whitespace-nowrap">
+              <button className="ml-2 md:ml-3 px-3 md:px-5 py-2 bg-blue-600 text-white text-xs md:text-sm font-bold rounded-full hover:bg-blue-700 transition-all whitespace-nowrap">
                 검색하기
               </button>
             </Link>
@@ -100,7 +121,7 @@ export default function Home() {
 
       {/* 통계 바 */}
       <div className="bg-gray-900 py-8">
-        <div className="max-w-4xl mx-auto flex justify-center gap-20">
+        <div className="max-w-4xl mx-auto flex justify-center gap-8 md:gap-20 px-5 flex-wrap">
           {[
             { num: "오픈 예정", label: "등록된 AI Agent" },
             { num: "모집 중", label: "전문가 등록" },
@@ -108,7 +129,7 @@ export default function Home() {
             { num: "곧 공개", label: "고객 만족도" },
           ].map((s) => (
             <div key={s.label} className="text-center">
-              <div className="text-xl font-extrabold text-white">{s.num}</div>
+              <div className="text-lg md:text-xl font-extrabold text-white">{s.num}</div>
               <div className="text-xs text-gray-400 mt-1">{s.label}</div>
             </div>
           ))}
@@ -116,29 +137,29 @@ export default function Home() {
       </div>
 
       {/* 카테고리 */}
-      <section className="py-16 px-10 bg-gray-50">
+      <section className="py-12 md:py-16 px-5 md:px-10 bg-gray-50">
         <div className="max-w-5xl mx-auto">
-          <div className="flex justify-between items-end mb-8">
-            <h2 className="text-2xl font-extrabold text-gray-900">카테고리 탐색 🗂️</h2>
+          <div className="flex justify-between items-end mb-6 md:mb-8">
+            <h2 className="text-xl md:text-2xl font-extrabold text-gray-900">카테고리 탐색 🗂️</h2>
             <Link href="/agents" className="text-sm font-semibold text-blue-600 hover:underline">전체 보기 →</Link>
           </div>
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
             {[
-              { icon: "📊", name: "데이터 분석", count: "준비 중" },
-              { icon: "📞", name: "고객 응대", count: "준비 중" },
-              { icon: "📝", name: "문서 자동화", count: "준비 중" },
-              { icon: "💼", name: "영업·마케팅", count: "준비 중" },
-              { icon: "⚖️", name: "법률·계약", count: "준비 중" },
-              { icon: "💰", name: "재무·회계", count: "준비 중" },
-              { icon: "🏗️", name: "제조·품질", count: "준비 중" },
-              { icon: "🔧", name: "IT·개발", count: "준비 중" },
+              { icon: "📊", name: "데이터 분석" },
+              { icon: "📞", name: "고객 응대" },
+              { icon: "📝", name: "문서 자동화" },
+              { icon: "💼", name: "영업·마케팅" },
+              { icon: "⚖️", name: "법률·계약" },
+              { icon: "💰", name: "재무·회계" },
+              { icon: "🏗️", name: "제조·품질" },
+              { icon: "🔧", name: "IT·개발" },
             ].map((cat) => (
               <button key={cat.name} onClick={popup} className="text-left">
-                <div className="bg-white rounded-2xl border border-gray-200 p-5 flex items-center gap-4 cursor-pointer hover:border-blue-400 hover:shadow-md transition-all w-full">
-                  <span className="text-3xl">{cat.icon}</span>
+                <div className="bg-white rounded-2xl border border-gray-200 p-4 md:p-5 flex items-center gap-3 md:gap-4 cursor-pointer hover:border-blue-400 hover:shadow-md transition-all w-full">
+                  <span className="text-2xl md:text-3xl">{cat.icon}</span>
                   <div>
                     <div className="text-sm font-bold text-gray-900">{cat.name}</div>
-                    <div className="text-xs text-gray-400 mt-0.5">{cat.count}</div>
+                    <div className="text-xs text-gray-400 mt-0.5">준비 중</div>
                   </div>
                 </div>
               </button>
@@ -148,40 +169,40 @@ export default function Home() {
       </section>
 
       {/* 전문가 모집 CTA */}
-      <section className="mx-10 my-16 rounded-3xl bg-gradient-to-br from-gray-900 to-blue-900 p-14 flex items-center justify-between">
+      <section className="mx-4 md:mx-10 my-12 md:my-16 rounded-3xl bg-gradient-to-br from-gray-900 to-blue-900 p-8 md:p-14 flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
         <div>
-          <h2 className="text-2xl font-extrabold text-white mb-3">🧑‍💼 전문가이신가요?<br />첫 번째 Agent를 등록해보세요!</h2>
+          <h2 className="text-xl md:text-2xl font-extrabold text-white mb-3">🧑‍💼 전문가이신가요?<br />첫 번째 Agent를 등록해보세요!</h2>
           <p className="text-gray-300 text-sm leading-relaxed">Agentora의 첫 번째 전문가가 되어<br />수많은 기업에 AI Agent를 공급하세요. 등록은 무료!</p>
-          <div className="flex gap-3 mt-6">
+          <div className="flex gap-3 mt-6 flex-wrap">
             <Link href="/register">
               <button className="px-6 py-3 bg-orange-500 text-white font-bold rounded-full text-sm hover:opacity-90 transition-all shadow-lg">전문가 등록하기</button>
             </Link>
             <button onClick={popup} className="px-6 py-3 border border-white/30 text-white font-semibold rounded-full text-sm hover:bg-white/10 transition-all">판매 가이드 보기</button>
           </div>
         </div>
-        <div className="flex gap-10 flex-shrink-0">
+        <div className="flex gap-8 md:gap-10 flex-shrink-0">
           <div className="text-center">
-            <div className="text-2xl font-extrabold text-white">최대 70%</div>
+            <div className="text-xl md:text-2xl font-extrabold text-white">최대 70%</div>
             <div className="text-xs text-gray-400 mt-1">수익 배분율</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-extrabold text-white">무료 등록</div>
+            <div className="text-xl md:text-2xl font-extrabold text-white">무료 등록</div>
             <div className="text-xs text-gray-400 mt-1">지금 바로 시작</div>
           </div>
         </div>
       </section>
 
       {/* 푸터 */}
-      <footer className="bg-gray-900 px-10 pt-12 pb-8">
-        <div className="max-w-5xl mx-auto flex justify-between gap-10">
+      <footer className="bg-gray-900 px-5 md:px-10 pt-10 md:pt-12 pb-8">
+        <div className="max-w-5xl mx-auto flex flex-col md:flex-row justify-between gap-8 md:gap-10">
           <div>
             <div className="flex items-center gap-2 mb-3">
               <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-600 to-orange-500 flex items-center justify-center text-sm">🤖</div>
               <span className="text-lg font-extrabold text-white">Agentora</span>
             </div>
-            <p className="text-xs text-gray-500 leading-relaxed max-w-[200px]">AI Agent를 맛보고 도입하는<br />B2B 전문 마켓플레이스</p>
+            <p className="text-xs text-gray-500 leading-relaxed">AI Agent를 맛보고 도입하는<br />B2B 전문 마켓플레이스</p>
           </div>
-          <div className="flex gap-14">
+          <div className="flex gap-8 md:gap-14 flex-wrap">
             {[
               { title: "서비스", links: [{ label: "Agent 탐색", href: "/agents" }, { label: "카테고리", href: null }, { label: "전문가 찾기", href: null }, { label: "가격 안내", href: null }] },
               { title: "전문가", links: [{ label: "전문가 등록", href: "/register" }, { label: "판매 가이드", href: null }, { label: "수익 정산", href: null }, { label: "파트너 혜택", href: null }] },
@@ -204,7 +225,7 @@ export default function Home() {
             ))}
           </div>
         </div>
-        <div className="max-w-5xl mx-auto mt-8 pt-6 border-t border-gray-800 flex justify-between text-xs text-gray-600">
+        <div className="max-w-5xl mx-auto mt-8 pt-6 border-t border-gray-800 flex flex-col md:flex-row justify-between gap-2 text-xs text-gray-600">
           <span>© 2026 Agentora. All rights reserved.</span>
           <span>개인정보처리방침 · 이용약관</span>
         </div>
