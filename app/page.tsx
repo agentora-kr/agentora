@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useState } from "react";
+import { useAuth } from "./providers";
 
 function ComingSoonPopup({ onClose }: { onClose: () => void }) {
   return (
@@ -21,6 +22,7 @@ function ComingSoonPopup({ onClose }: { onClose: () => void }) {
 export default function Home() {
   const [showPopup, setShowPopup] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const { user } = useAuth();
   const popup = () => setShowPopup(true);
 
   return (
@@ -43,8 +45,16 @@ export default function Home() {
         </div>
 
         <div className="hidden md:flex items-center gap-3">
-          <Link href="/login"><button className="px-5 py-2 rounded-full text-sm font-semibold border border-gray-200 text-gray-600 hover:border-blue-500 hover:text-blue-600 transition-all">로그인</button></Link>
-          <Link href="/login"><button className="px-5 py-2 rounded-full text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-all shadow-md">무료 시작</button></Link>
+          {user ? (
+            <Link href="/mypage">
+              <button className="px-5 py-2 rounded-full text-sm font-semibold border border-gray-200 text-gray-600 hover:border-blue-500 hover:text-blue-600 transition-all">마이페이지</button>
+            </Link>
+          ) : (
+            <>
+              <Link href="/login"><button className="px-5 py-2 rounded-full text-sm font-semibold border border-gray-200 text-gray-600 hover:border-blue-500 hover:text-blue-600 transition-all">로그인</button></Link>
+              <Link href="/login"><button className="px-5 py-2 rounded-full text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-all shadow-md">무료 시작</button></Link>
+            </>
+          )}
         </div>
 
         {/* 모바일 햄버거 */}
@@ -64,12 +74,20 @@ export default function Home() {
             <Link href="/register" onClick={() => setMenuOpen(false)} className="text-sm font-semibold text-gray-700 py-2 border-b border-gray-100">전문가</Link>
             <button onClick={() => { setMenuOpen(false); popup(); }} className="text-sm font-semibold text-gray-700 py-2 border-b border-gray-100 text-left">가격 안내</button>
             <div className="flex gap-3 pt-2">
-              <Link href="/login" className="flex-1" onClick={() => setMenuOpen(false)}>
-                <button className="w-full py-2.5 rounded-full text-sm font-semibold border border-gray-200 text-gray-600">로그인</button>
-              </Link>
-              <Link href="/login" className="flex-1" onClick={() => setMenuOpen(false)}>
-                <button className="w-full py-2.5 rounded-full text-sm font-semibold bg-blue-600 text-white">무료 시작</button>
-              </Link>
+              {user ? (
+                <Link href="/mypage" className="flex-1" onClick={() => setMenuOpen(false)}>
+                  <button className="w-full py-2.5 rounded-full text-sm font-semibold bg-blue-600 text-white">마이페이지</button>
+                </Link>
+              ) : (
+                <>
+                  <Link href="/login" className="flex-1" onClick={() => setMenuOpen(false)}>
+                    <button className="w-full py-2.5 rounded-full text-sm font-semibold border border-gray-200 text-gray-600">로그인</button>
+                  </Link>
+                  <Link href="/login" className="flex-1" onClick={() => setMenuOpen(false)}>
+                    <button className="w-full py-2.5 rounded-full text-sm font-semibold bg-blue-600 text-white">무료 시작</button>
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -91,28 +109,18 @@ export default function Home() {
             우리 회사에 꼭 맞는 솔루션만 골라 구독하세요.
           </p>
 
-          {/* 검색바 */}
           <div className="flex items-center bg-white rounded-full shadow-xl border border-blue-100 px-4 md:px-5 py-2 max-w-2xl mx-auto mb-5">
             <span className="text-gray-400 mr-2 md:mr-3">🔍</span>
-            <input
-              type="text"
-              placeholder="어떤 업무를 자동화하고 싶으세요?"
-              className="flex-1 outline-none text-sm text-gray-700 bg-transparent min-w-0"
-            />
+            <input type="text" placeholder="어떤 업무를 자동화하고 싶으세요?" className="flex-1 outline-none text-sm text-gray-700 bg-transparent min-w-0" />
             <Link href="/agents">
-              <button className="ml-2 md:ml-3 px-3 md:px-5 py-2 bg-blue-600 text-white text-xs md:text-sm font-bold rounded-full hover:bg-blue-700 transition-all whitespace-nowrap">
-                검색하기
-              </button>
+              <button className="ml-2 md:ml-3 px-3 md:px-5 py-2 bg-blue-600 text-white text-xs md:text-sm font-bold rounded-full hover:bg-blue-700 transition-all whitespace-nowrap">검색하기</button>
             </Link>
           </div>
 
-          {/* 태그 */}
           <div className="flex gap-2 justify-center flex-wrap">
             {["📊 데이터 분석", "📞 고객 응대", "📝 계약서 검토", "💼 영업 지원", "⚖️ 법률", "💰 회계·세무"].map((tag) => (
               <button key={tag} onClick={popup}>
-                <span className="px-3 py-1.5 bg-white border border-gray-200 rounded-full text-xs font-semibold text-gray-600 cursor-pointer hover:border-blue-400 hover:text-blue-600 transition-all">
-                  {tag}
-                </span>
+                <span className="px-3 py-1.5 bg-white border border-gray-200 rounded-full text-xs font-semibold text-gray-600 cursor-pointer hover:border-blue-400 hover:text-blue-600 transition-all">{tag}</span>
               </button>
             ))}
           </div>
@@ -230,7 +238,6 @@ export default function Home() {
           <span>개인정보처리방침 · 이용약관</span>
         </div>
       </footer>
-
     </main>
   );
 }
