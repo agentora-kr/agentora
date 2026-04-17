@@ -111,7 +111,7 @@ export default function AgentDetailPage() {
             <div className="bg-gray-50 rounded-xl border border-gray-100 h-72 md:h-80 overflow-y-auto p-4 flex flex-col gap-3 mb-3">
               {messages.map((msg, i) => (
                 <div key={i} className={`flex gap-2 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm flex-shrink-0 ${msg.role === "agent" ? "bg-blue-50" : msg.role === "assistant" ? "bg-blue-50" : "bg-blue-600 text-white text-xs font-bold"}`}>
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm flex-shrink-0 ${msg.role === "assistant" ? "bg-blue-50" : "bg-blue-600 text-white text-xs font-bold"}`}>
                     {msg.role === "user" ? "나" : "🤖"}
                   </div>
                   <div className={`max-w-[75%] px-3 py-2 rounded-xl text-xs leading-relaxed whitespace-pre-line ${msg.role === "user" ? "bg-blue-600 text-white rounded-tr-sm" : "bg-white border border-gray-100 text-gray-700 rounded-tl-sm"}`}>
