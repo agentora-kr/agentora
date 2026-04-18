@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import { useAuth } from "../providers";
 
 const categories = ["전체", "데이터 분석", "고객 응대", "문서 자동화", "영업·마케팅", "법률·계약", "재무·회계", "제조·품질", "IT·개발"];
 
@@ -8,6 +9,7 @@ export default function AgentsPage() {
   const [selectedCat, setSelectedCat] = useState("전체");
   const [search, setSearch] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
+  const { user } = useAuth();
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -21,8 +23,16 @@ export default function AgentsPage() {
           <Link href="/register" className="text-sm font-medium text-gray-500 hover:text-blue-600">전문가 등록</Link>
         </div>
         <div className="hidden md:flex gap-3">
-          <Link href="/login"><button className="px-5 py-2 rounded-full text-sm font-semibold border border-gray-200 text-gray-600 hover:border-blue-500 hover:text-blue-600 transition-all">로그인</button></Link>
-          <Link href="/login"><button className="px-5 py-2 rounded-full text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-all shadow-md">무료 시작</button></Link>
+          {user ? (
+            <Link href="/mypage">
+              <button className="px-5 py-2 rounded-full text-sm font-semibold border border-gray-200 text-gray-600 hover:border-blue-500 hover:text-blue-600 transition-all">마이페이지</button>
+            </Link>
+          ) : (
+            <>
+              <Link href="/login"><button className="px-5 py-2 rounded-full text-sm font-semibold border border-gray-200 text-gray-600 hover:border-blue-500 hover:text-blue-600 transition-all">로그인</button></Link>
+              <Link href="/login"><button className="px-5 py-2 rounded-full text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-all shadow-md">무료 시작</button></Link>
+            </>
+          )}
         </div>
         <button className="md:hidden flex flex-col gap-1.5 p-2" onClick={() => setMenuOpen(!menuOpen)}>
           <span className={`block w-6 h-0.5 bg-gray-700 transition-all ${menuOpen ? "rotate-45 translate-y-2" : ""}`}></span>
@@ -37,8 +47,20 @@ export default function AgentsPage() {
             <Link href="/agents" onClick={() => setMenuOpen(false)} className="text-sm font-semibold text-blue-600 py-2 border-b border-gray-100">전체 Agent</Link>
             <Link href="/register" onClick={() => setMenuOpen(false)} className="text-sm font-semibold text-gray-700 py-2 border-b border-gray-100">전문가 등록</Link>
             <div className="flex gap-3 pt-2">
-              <Link href="/login" className="flex-1"><button className="w-full py-2.5 rounded-full text-sm font-semibold border border-gray-200 text-gray-600">로그인</button></Link>
-              <Link href="/login" className="flex-1"><button className="w-full py-2.5 rounded-full text-sm font-semibold bg-blue-600 text-white">무료 시작</button></Link>
+              {user ? (
+                <Link href="/mypage" className="flex-1" onClick={() => setMenuOpen(false)}>
+                  <button className="w-full py-2.5 rounded-full text-sm font-semibold bg-blue-600 text-white">마이페이지</button>
+                </Link>
+              ) : (
+                <>
+                  <Link href="/login" className="flex-1" onClick={() => setMenuOpen(false)}>
+                    <button className="w-full py-2.5 rounded-full text-sm font-semibold border border-gray-200 text-gray-600">로그인</button>
+                  </Link>
+                  <Link href="/login" className="flex-1" onClick={() => setMenuOpen(false)}>
+                    <button className="w-full py-2.5 rounded-full text-sm font-semibold bg-blue-600 text-white">무료 시작</button>
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>
