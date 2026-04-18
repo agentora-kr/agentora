@@ -1,27 +1,25 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import { useAuth } from "../providers";
 import { createClient } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 
 export default function MyPage() {
-  const [user, setUser] = useState<{ email?: string } | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { user, loading } = useAuth();
   const router = useRouter();
   const supabase = createClient();
 
   useEffect(() => {
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        router.push("/login");
-        return;
-      }
-      setUser(user);
-      setLoading(false);
-    };
-    getUser();
-  }, []);
+    if (!loading && !user) {
+      router.push("/login");
+    }
+  }, [user, loading]);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    window.location.href = "/";
+  };
 
   if (loading) {
     return (
@@ -34,31 +32,35 @@ export default function MyPage() {
     );
   }
 
+  if (!user) return null;
+
+  const displayName = (user as any)?.user_metadata?.name || user?.email?.split("@")[0] || "사용자";
+  const displayCompany = (user as any)?.user_metadata?.company || "";
+
   return (
     <main className="min-h-screen bg-gray-50">
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-100 h-16 flex items-center justify-between px-10">
+      {/* 네비게이션 */}
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-100 h-16 flex items-center justify-between px-5 md:px-10">
         <Link href="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-orange-500 flex items-center justify-center text-sm"></div>
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-orange-500 flex items-center justify-center text-sm">🤖</div>
           <span className="text-xl font-extrabold text-gray-900">Agentora</span>
         </Link>
-        <div className="flex gap-3">
-          <button
-            onClick={async () => { await supabase.auth.signOut(); router.push("/"); }}
-            className="px-5 py-2 rounded-full text-sm font-semibold border border-gray-200 text-gray-600 hover:border-red-400 hover:text-red-500 transition-all"
-          >
-            로그아웃
-          </button>
-        </div>
+        <button
+          onClick={handleLogout}
+          className="px-4 py-2 rounded-full text-sm font-semibold border border-gray-200 text-gray-600 hover:border-red-400 hover:text-red-500 transition-all"
+        >
+          로그아웃
+        </button>
       </nav>
 
       {/* 프로필 헤더 */}
-      <div className="pt-16 bg-gradient-to-br from-gray-900 to-blue-900 px-10 py-10">
-        <div className="max-w-5xl mx-auto flex items-center gap-5">
-          <div className="w-16 h-16 rounded-2xl bg-white/20 flex items-center justify-center text-3xl border-2 border-white/30 flex-shrink-0">👤</div>
-          <div>
-            <h1 className="text-xl font-extrabold text-white mb-1">안녕하세요! 👋</h1>
-            <p className="text-sm text-gray-400">{user?.email}</p>
-            <div className="flex gap-2 mt-2">
+      <div className="pt-16 bg-gradient-to-br from-gray-900 to-blue-900 px-5 md:px-10 py-8 md:py-10">
+        <div className="max-w-5xl mx-auto flex items-center gap-4 md:gap-5">
+          <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-white/20 flex items-center justify-center text-2xl md:text-3xl border-2 border-white/30 flex-shrink-0">👤</div>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-lg md:text-xl font-extrabold text-white mb-1">{displayName} 님, 안녕하세요! 👋</h1>
+            <p className="text-sm text-gray-400">{displayCompany && `${displayCompany} · `}{user?.email}</p>
+            <div className="flex gap-2 mt-2 flex-wrap">
               <span className="text-xs font-bold px-3 py-1 rounded-full bg-white/15 text-white">기업 회원</span>
               <span className="text-xs font-bold px-3 py-1 rounded-full bg-green-500 text-white">가입 완료</span>
             </div>
@@ -67,32 +69,27 @@ export default function MyPage() {
       </div>
 
       {/* 빈 상태 */}
-      <div className="max-w-5xl mx-auto px-10 py-16 flex flex-col items-center justify-center text-center">
-        <div className="text-7xl mb-6">📭</div>
-        <h2 className="text-2xl font-extrabold text-gray-900 mb-3">아직 구독 중인 Agent가 없어요</h2>
-        <p className="text-gray-500 text-base leading-relaxed mb-8 max-w-md">
+      <div className="max-w-5xl mx-auto px-5 md:px-10 py-16 flex flex-col items-center justify-center text-center">
+        <div className="text-6xl md:text-7xl mb-6">📭</div>
+        <h2 className="text-xl md:text-2xl font-extrabold text-gray-900 mb-3">아직 구독 중인 Agent가 없어요</h2>
+        <p className="text-gray-500 text-sm md:text-base leading-relaxed mb-8 max-w-md">
           마음에 드는 AI Agent를 찾아 맛보기 체험 후 구독해보세요!<br />
           전문가들이 곧 다양한 Agent를 등록할 예정이에요.
         </p>
-        <div className="flex gap-3">
+        <div className="flex gap-3 flex-wrap justify-center">
           <Link href="/agents">
-            <button className="px-8 py-3 bg-blue-600 text-white font-bold rounded-full hover:bg-blue-700 transition-all shadow-md text-sm">
-               Agent 탐색하기
-            </button>
+            <button className="px-6 md:px-8 py-3 bg-blue-600 text-white font-bold rounded-full hover:bg-blue-700 transition-all shadow-md text-sm">🤖 Agent 탐색하기</button>
           </Link>
           <Link href="/register">
-            <button className="px-8 py-3 border border-gray-200 text-gray-600 font-bold rounded-full hover:border-blue-400 hover:text-blue-600 transition-all text-sm">
-              🧑‍💼 전문가 등록하기
-            </button>
+            <button className="px-6 md:px-8 py-3 border border-gray-200 text-gray-600 font-bold rounded-full hover:border-blue-400 hover:text-blue-600 transition-all text-sm">🧑‍💼 전문가 등록하기</button>
           </Link>
         </div>
 
-        {/* 준비 중 기능 목록 */}
-        <div className="mt-14 w-full max-w-2xl">
+        <div className="mt-12 md:mt-14 w-full max-w-2xl">
           <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">준비 중인 기능</p>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {[
-              { icon: "", name: "내 Agent 목록", desc: "구독 중인 Agent 관리" },
+              { icon: "🤖", name: "내 Agent 목록", desc: "구독 중인 Agent 관리" },
               { icon: "💳", name: "결제 내역", desc: "구독 및 결제 관리" },
               { icon: "📊", name: "사용량 통계", desc: "Agent 사용 현황" },
               { icon: "🔔", name: "알림 센터", desc: "맞춤 알림 서비스" },
