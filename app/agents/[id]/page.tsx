@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase";
 import { useAuth } from "../../providers";
@@ -19,7 +19,8 @@ type Agent = {
   review_count: number;
 };
 
-export default function AgentDetailPage({ params }: { params: { id: string } }) {
+export default function AgentDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = React.use(params);
   const [agent, setAgent] = useState<Agent | null>(null);
   const [loading, setLoading] = useState(true);
   const [messages, setMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
@@ -31,7 +32,7 @@ export default function AgentDetailPage({ params }: { params: { id: string } }) 
 
   useEffect(() => {
     const fetchAgent = async () => {
-      const { data, error } = await supabase.from("agents").select("*").eq("id", params.id).single();
+      const { data, error } = await supabase.from("agents").select("*").eq("id", id).single();
       if (!error && data) {
         setAgent(data);
         setMessages([{
@@ -42,7 +43,7 @@ export default function AgentDetailPage({ params }: { params: { id: string } }) 
       setLoading(false);
     };
     fetchAgent();
-  }, [params.id]);
+  }, [id]);
 
   const handleSend = async () => {
     if (!input.trim() || chatLoading || trial <= 0 || !agent) return;
