@@ -1,7 +1,6 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 
 export default function RegisterPage() {
@@ -9,7 +8,6 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
-  const router = useRouter();
   const supabase = createClient();
 
   const [form, setForm] = useState({
@@ -18,6 +16,7 @@ export default function RegisterPage() {
     agentName: "", agentDesc: "", agentLongDesc: "",
     systemPrompt: "", sampleQuestion: "",
     basicPrice: "", proPrice: "", trialCount: "3",
+    htmlFile: null as File | null,
   });
 
   const update = (key: string, value: string) => setForm(prev => ({ ...prev, [key]: value }));
@@ -33,6 +32,52 @@ export default function RegisterPage() {
     }));
   };
 
+  // HTML 파일에서 시스템 프롬프트 자동 추출
+  const extractSystemPrompt = (htmlContent: string): string => {
+    // 방법 1: systemPrompt 변수 찾기
+    const patterns = [
+      /const\s+systemPrompt\s*=\s*`([^`]+)`/s,
+      /const\s+systemPrompt\s*=\s*"([^"]+)"/s,
+      /const\s+systemPrompt\s*=\s*'([^']+)'/s,
+      /system:\s*`([^`]+)`/s,
+      /system:\s*"([^"]+)"/s,
+      /"system"\s*,\s*content\s*:\s*"([^"]+)"/s,
+      /role:\s*['"]system['"]\s*,\s*content:\s*['"]([^'"]+)['"]/s,
+    ];
+
+    for (const pattern of patterns) {
+      const match = htmlContent.match(pattern);
+      if (match && match[1] && match[1].length > 20) {
+        return match[1].trim();
+      }
+    }
+    return "";
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const content = ev.target?.result as string;
+      const extracted = extractSystemPrompt(content);
+
+      if (extracted) {
+        setForm(prev => ({
+          ...prev,
+          htmlFile: file,
+          systemPrompt: extracted,
+        }));
+        setError("");
+      } else {
+        setForm(prev => ({ ...prev, htmlFile: file }));
+        setError("시스템 프롬프트를 자동으로 찾지 못했어요. 아래에서 직접 입력해주세요.");
+      }
+    };
+    reader.readAsText(file);
+  };
+
   const handleSubmit = async () => {
     setLoading(true);
     setError("");
@@ -46,7 +91,6 @@ export default function RegisterPage() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
 
-      // 전문가 정보 저장
       const { error: expertError } = await supabase.from("experts").insert({
         user_id: user?.id || null,
         name: form.name,
@@ -62,7 +106,6 @@ export default function RegisterPage() {
 
       if (expertError) throw expertError;
 
-      // Agent도 같이 등록 (pending 상태 — 관리자 승인 후 공개)
       if (form.agentName) {
         const { error: agentError } = await supabase.from("agents").insert({
           name: form.agentName,
@@ -114,7 +157,6 @@ export default function RegisterPage() {
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-orange-500 flex items-center justify-center text-sm">🤖</div>
           <span className="text-xl font-extrabold text-gray-900">Agentora</span>
         </Link>
-        <button className="px-4 py-2 text-sm font-semibold border border-gray-200 rounded-full text-gray-600 hover:border-blue-400 hover:text-blue-600 transition-all">임시저장</button>
       </nav>
 
       <div className="pt-16 bg-gradient-to-br from-gray-900 to-blue-900 px-5 md:px-10 py-8 md:py-10">
@@ -159,7 +201,7 @@ export default function RegisterPage() {
                     <input type="text" placeholder="(주)테크컴퍼니" value={form.company} onChange={e => update("company", e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-500 bg-gray-50" />
                   </div>
                   <div className="flex-1">
-                    <label className="block text-xs font-bold text-gray-700 mb-1.5">경력 연수 <span className="text-orange-500">*</span></label>
+                    <label className="block text-xs font-bold text-gray-700 mb-1.5">경력 연수</label>
                     <select value={form.experience} onChange={e => update("experience", e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-500 bg-gray-50">
                       <option value="">선택해주세요</option>
                       <option value="1~3년">1~3년</option>
@@ -207,8 +249,43 @@ export default function RegisterPage() {
         {step === 2 && (
           <div className="flex flex-col gap-5">
             <div className="bg-white rounded-2xl border border-gray-200 p-5 md:p-6">
-              <h2 className="text-base font-extrabold text-gray-900 mb-1">🤖 Agent 기본 정보</h2>
-              <p className="text-xs text-gray-400 mb-5">구매자가 첫눈에 이해할 수 있도록 명확하게 작성해주세요.</p>
+              <h2 className="text-base font-extrabold text-gray-900 mb-1">🤖 Agent 설정</h2>
+              <p className="text-xs text-gray-400 mb-5">HTML 파일을 업로드하면 설정이 자동으로 추출돼요!</p>
+
+              {/* HTML 파일 업로드 */}
+              <div className="mb-5">
+                <label className="block text-xs font-bold text-gray-700 mb-1.5">
+                  🚀 HTML Agent 파일 업로드 (자동 추출)
+                </label>
+                <div
+                  className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${form.htmlFile ? "border-blue-400 bg-blue-50" : "border-gray-200 hover:border-blue-400 hover:bg-blue-50"}`}
+                  onClick={() => document.getElementById("htmlFileInput")?.click()}
+                >
+                  {form.htmlFile ? (
+                    <div>
+                      <div className="text-2xl mb-2">✅</div>
+                      <p className="text-sm font-bold text-blue-600">{form.htmlFile.name}</p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {form.systemPrompt ? "시스템 프롬프트 자동 추출 완료!" : "파일 업로드 완료"}
+                      </p>
+                    </div>
+                  ) : (
+                    <div>
+                      <div className="text-3xl mb-2">📁</div>
+                      <p className="text-sm font-semibold text-gray-600">HTML 파일을 클릭해서 업로드하세요</p>
+                      <p className="text-xs text-gray-400 mt-1">시스템 프롬프트가 자동으로 추출돼요</p>
+                    </div>
+                  )}
+                </div>
+                <input
+                  id="htmlFileInput"
+                  type="file"
+                  accept=".html"
+                  className="hidden"
+                  onChange={handleFileUpload}
+                />
+              </div>
+
               <div className="flex flex-col gap-4">
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1.5">Agent 이름 <span className="text-orange-500">*</span></label>
@@ -220,11 +297,14 @@ export default function RegisterPage() {
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1.5">상세 설명</label>
-                  <textarea rows={4} placeholder="Agent가 어떤 문제를 해결하는지, 어떻게 작동하는지 작성해주세요." value={form.agentLongDesc} onChange={e => update("agentLongDesc", e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-500 bg-gray-50 resize-none"></textarea>
+                  <textarea rows={3} placeholder="Agent가 어떤 문제를 해결하는지 작성해주세요." value={form.agentLongDesc} onChange={e => update("agentLongDesc", e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-500 bg-gray-50 resize-none"></textarea>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1.5">시스템 프롬프트 <span className="text-orange-500">*</span></label>
-                  <textarea rows={5} placeholder="당신은 10년 경력의 계약 전문 변호사입니다..." value={form.systemPrompt} onChange={e => update("systemPrompt", e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-500 bg-gray-50 resize-none font-mono"></textarea>
+                  <label className="block text-xs font-bold text-gray-700 mb-1.5">
+                    시스템 프롬프트
+                    {form.systemPrompt && <span className="ml-2 text-green-500 text-xs">✅ 자동 추출됨</span>}
+                  </label>
+                  <textarea rows={5} placeholder="HTML 파일을 업로드하면 자동으로 채워져요. 직접 입력도 가능해요." value={form.systemPrompt} onChange={e => update("systemPrompt", e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-500 bg-gray-50 resize-none font-mono"></textarea>
                   <p className="text-xs text-gray-400 mt-1">구매자에게는 보이지 않습니다.</p>
                 </div>
                 <div>
@@ -272,7 +352,7 @@ export default function RegisterPage() {
               {[
                 { label: "전문가 프로필을 완성했나요?", done: !!(form.name && form.title && form.email) },
                 { label: "Agent 이름과 설명을 입력했나요?", done: !!(form.agentName && form.agentDesc) },
-                { label: "시스템 프롬프트를 입력했나요?", done: !!form.systemPrompt },
+                { label: "시스템 프롬프트가 설정됐나요?", done: !!form.systemPrompt },
                 { label: "가격을 설정했나요?", done: !!form.basicPrice },
               ].map((item) => (
                 <div key={item.label} className="flex items-center gap-2 text-sm mb-2">
