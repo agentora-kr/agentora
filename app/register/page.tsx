@@ -65,8 +65,6 @@ export default function RegisterPage() {
       const extracted = extractSystemPrompt(content);
       if (extracted) {
         setSystemPrompt(extracted);
-      } else {
-        setError("시스템 프롬프트를 자동으로 찾지 못했어요. 아래에서 직접 입력해주세요.");
       }
 
       // Storage 업로드
