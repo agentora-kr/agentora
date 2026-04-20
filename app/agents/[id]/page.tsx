@@ -171,7 +171,7 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
                     {msg.role === "user" ? "나" : agent.emoji}
                   </div>
                   <div className={`max-w-[75%] px-3 py-2 rounded-xl text-xs leading-relaxed whitespace-pre-line ${msg.role === "user" ? "bg-blue-600 text-white rounded-tr-sm" : "bg-white border border-gray-100 text-gray-700 rounded-tl-sm"}`}>
-                    {msg.content}
+                    {msg.content.replace(/#{1,6}\s/g, '').replace(/\*\*/g, '').replace(/\*/g, '').replace(/---/g, '').replace(/^-\s/gm, '• ')}
                   </div>
                 </div>
               ))}
