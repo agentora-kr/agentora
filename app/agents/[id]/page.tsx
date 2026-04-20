@@ -37,7 +37,7 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
         setAgent(data);
         setMessages([{
           role: "assistant",
-          content: `안녕하세요! 저는 **${data.name}**입니다. 👋\n\n${data.description}\n\n궁금한 내용을 질문해주세요!`
+          content: `안녕하세요! 저는 ${data.name}입니다. 👋\n\n${data.description}\n\n궁금한 내용을 질문해주세요!`
         }]);
       }
       setLoading(false);
@@ -185,6 +185,14 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
                   </div>
                 </div>
               )}
+            </div>
+
+            {/* 안내 문구 */}
+            <div className="bg-blue-50 rounded-xl px-4 py-2.5 mb-3">
+              <p className="text-xs text-blue-600 font-semibold">📝 맛보기 체험은 텍스트 입력만 가능합니다.</p>
+              <p className="text-xs text-gray-400 mt-0.5">파일 첨부를 원하시나요?{" "}
+                <Link href="/login" className="text-blue-500 font-semibold underline">구독을 시작해보세요!</Link>
+              </p>
             </div>
 
             {/* 입력 */}
