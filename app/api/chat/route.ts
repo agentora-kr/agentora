@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
     const { messages, systemPrompt } = await request.json();
 
     const response = await client.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-sonnet-4-5",
       max_tokens: 1024,
       system: systemPrompt || "당신은 유능한 AI 어시스턴트입니다. 한국어로 답변해주세요.",
       messages: messages,
