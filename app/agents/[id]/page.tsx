@@ -17,6 +17,7 @@ type Agent = {
   badge: string | null;
   rating: number;
   review_count: number;
+  html_url: string | null;
 };
 
 export default function AgentDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -35,10 +36,12 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
       const { data, error } = await supabase.from("agents").select("*").eq("id", id).single();
       if (!error && data) {
         setAgent(data);
-        setMessages([{
-          role: "assistant",
-          content: `안녕하세요! 저는 ${data.name}입니다. 👋\n\n${data.description}\n\n궁금한 내용을 질문해주세요!`
-        }]);
+        if (!data.html_url) {
+          setMessages([{
+            role: "assistant",
+            content: `안녕하세요! 저는 ${data.name}입니다. 👋\n\n${data.description}\n\n궁금한 내용을 질문해주세요!`
+          }]);
+        }
       }
       setLoading(false);
     };
@@ -133,6 +136,7 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
                 <span className="bg-blue-50 text-blue-600 text-xs font-bold px-3 py-1 rounded-full">{agent.category}</span>
                 {agent.badge && <span className="bg-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full">{agent.badge}</span>}
                 <span className="bg-green-50 text-green-600 text-xs font-bold px-3 py-1 rounded-full">✅ 검증됨</span>
+                {agent.html_url && <span className="bg-purple-50 text-purple-600 text-xs font-bold px-3 py-1 rounded-full">🚀 풀 기능</span>}
               </div>
               <h1 className="text-xl md:text-2xl font-extrabold text-gray-900 mb-2">{agent.name}</h1>
               <p className="text-sm text-gray-500 leading-relaxed">{agent.description}</p>
@@ -151,66 +155,86 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
       </div>
 
       <div className="max-w-5xl mx-auto px-5 md:px-10 py-6 md:py-8 flex flex-col md:flex-row gap-6">
-        {/* 채팅 */}
+
+        {/* 메인 영역 */}
         <div className="flex-1 min-w-0">
-          <div className="bg-white rounded-2xl border-2 border-blue-500 p-5 md:p-6 relative overflow-hidden">
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-600 to-orange-500"></div>
-            <div className="flex items-center justify-between mb-1">
-              <h2 className="text-base font-extrabold text-gray-900">🍽️ 지금 바로 맛보기</h2>
-              <span className="bg-orange-50 text-orange-500 text-xs font-bold px-3 py-1 rounded-full">무료 체험</span>
-            </div>
-            <p className="text-xs text-gray-400 mb-4">
-              남은 체험 횟수: <strong className="text-orange-500">{trial}회</strong>
-            </p>
-
-            {/* 채팅창 */}
-            <div className="bg-gray-50 rounded-xl border border-gray-100 h-72 md:h-80 overflow-y-auto p-4 flex flex-col gap-3 mb-3">
-              {messages.map((msg, i) => (
-                <div key={i} className={`flex gap-2 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm flex-shrink-0 ${msg.role === "user" ? "bg-blue-600 text-white text-xs font-bold" : "bg-blue-50"}`}>
-                    {msg.role === "user" ? "나" : agent.emoji}
-                  </div>
-                  <div className={`max-w-[75%] px-3 py-2 rounded-xl text-xs leading-relaxed whitespace-pre-line ${msg.role === "user" ? "bg-blue-600 text-white rounded-tr-sm" : "bg-white border border-gray-100 text-gray-700 rounded-tl-sm"}`}>
-                    {msg.content.replace(/#{1,6}\s/g, '').replace(/\*\*/g, '').replace(/\*/g, '').replace(/---/g, '').replace(/^-\s/gm, '• ')}
-                  </div>
+          {agent.html_url ? (
+            /* HTML Agent — iframe으로 표시 */
+            <div className="bg-white rounded-2xl border-2 border-blue-500 overflow-hidden relative">
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-600 to-orange-500 z-10"></div>
+              <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+                <div>
+                  <h2 className="text-base font-extrabold text-gray-900">🍽️ 지금 바로 맛보기</h2>
+                  <p className="text-xs text-gray-400 mt-0.5">남은 체험 횟수: <strong className="text-orange-500">{trial}회</strong></p>
                 </div>
-              ))}
-              {chatLoading && (
-                <div className="flex gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-sm">{agent.emoji}</div>
-                  <div className="bg-white border border-gray-100 rounded-xl px-4 py-3 flex gap-1.5 items-center rounded-tl-sm">
-                    <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce"></div>
-                    <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce [animation-delay:0.15s]"></div>
-                    <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce [animation-delay:0.3s]"></div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* 안내 문구 */}
-            <div className="bg-blue-50 rounded-xl px-4 py-2.5 mb-3">
-              <p className="text-xs text-blue-600 font-semibold">📝 맛보기 체험은 텍스트 입력만 가능합니다.</p>
-              <p className="text-xs text-gray-400 mt-0.5">파일 첨부를 원하시나요?{" "}
-                <Link href="/login" className="text-blue-500 font-semibold underline">구독을 시작해보세요!</Link>
-              </p>
-            </div>
-
-            {/* 입력 */}
-            <div className="flex gap-2">
-              <input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSend()}
-                placeholder={trial > 0 ? "질문을 입력하세요..." : "체험 횟수를 모두 사용했습니다."}
-                disabled={trial <= 0}
-                className="flex-1 px-4 py-2.5 rounded-full border border-gray-200 text-sm outline-none focus:border-blue-500 disabled:bg-gray-100"
+                <span className="bg-orange-50 text-orange-500 text-xs font-bold px-3 py-1 rounded-full">무료 체험</span>
+              </div>
+              <iframe
+                src={agent.html_url}
+                className="w-full"
+                style={{ height: "700px", border: "none" }}
+                title={agent.name}
+                sandbox="allow-scripts allow-same-origin allow-forms"
               />
-              <button onClick={handleSend} disabled={chatLoading || trial <= 0}
-                className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 disabled:bg-gray-200 transition-all flex-shrink-0">
-                ➤
-              </button>
             </div>
-          </div>
+          ) : (
+            /* 일반 채팅 UI */
+            <div className="bg-white rounded-2xl border-2 border-blue-500 p-5 md:p-6 relative overflow-hidden">
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-600 to-orange-500"></div>
+              <div className="flex items-center justify-between mb-1">
+                <h2 className="text-base font-extrabold text-gray-900">🍽️ 지금 바로 맛보기</h2>
+                <span className="bg-orange-50 text-orange-500 text-xs font-bold px-3 py-1 rounded-full">무료 체험</span>
+              </div>
+              <p className="text-xs text-gray-400 mb-4">
+                남은 체험 횟수: <strong className="text-orange-500">{trial}회</strong>
+              </p>
+
+              <div className="bg-gray-50 rounded-xl border border-gray-100 h-72 md:h-80 overflow-y-auto p-4 flex flex-col gap-3 mb-3">
+                {messages.map((msg, i) => (
+                  <div key={i} className={`flex gap-2 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm flex-shrink-0 ${msg.role === "user" ? "bg-blue-600 text-white text-xs font-bold" : "bg-blue-50"}`}>
+                      {msg.role === "user" ? "나" : agent.emoji}
+                    </div>
+                    <div className={`max-w-[75%] px-3 py-2 rounded-xl text-xs leading-relaxed whitespace-pre-line ${msg.role === "user" ? "bg-blue-600 text-white rounded-tr-sm" : "bg-white border border-gray-100 text-gray-700 rounded-tl-sm"}`}>
+                      {msg.content.replace(/#{1,6}\s/g, '').replace(/\*\*/g, '').replace(/\*/g, '').replace(/---/g, '').replace(/^-\s/gm, '• ')}
+                    </div>
+                  </div>
+                ))}
+                {chatLoading && (
+                  <div className="flex gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-sm">{agent.emoji}</div>
+                    <div className="bg-white border border-gray-100 rounded-xl px-4 py-3 flex gap-1.5 items-center rounded-tl-sm">
+                      <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce"></div>
+                      <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce [animation-delay:0.15s]"></div>
+                      <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce [animation-delay:0.3s]"></div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="bg-blue-50 rounded-xl px-4 py-2.5 mb-3">
+                <p className="text-xs text-blue-600 font-semibold">📝 맛보기 체험은 텍스트 입력만 가능합니다.</p>
+                <p className="text-xs text-gray-400 mt-0.5">파일 첨부를 원하시나요?{" "}
+                  <Link href="/login" className="text-blue-500 font-semibold underline">구독을 시작해보세요!</Link>
+                </p>
+              </div>
+
+              <div className="flex gap-2">
+                <input
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSend()}
+                  placeholder={trial > 0 ? "질문을 입력하세요..." : "체험 횟수를 모두 사용했습니다."}
+                  disabled={trial <= 0}
+                  className="flex-1 px-4 py-2.5 rounded-full border border-gray-200 text-sm outline-none focus:border-blue-500 disabled:bg-gray-100"
+                />
+                <button onClick={handleSend} disabled={chatLoading || trial <= 0}
+                  className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 disabled:bg-gray-200 transition-all flex-shrink-0">
+                  ➤
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* 사이드 */}
@@ -242,6 +266,7 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
               ["제작자", agent.author_name],
               ["맛보기", "3회 무료"],
               ["평점", agent.rating > 0 ? `⭐ ${agent.rating}` : "리뷰 없음"],
+              ["타입", agent.html_url ? "🚀 풀 기능" : "💬 채팅형"],
             ].map(([label, value]) => (
               <div key={label} className="flex justify-between py-2 border-b border-gray-50 last:border-0 text-xs">
                 <span className="text-gray-400">{label}</span>

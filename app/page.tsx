@@ -1,243 +1,376 @@
 "use client";
-import Link from "next/link";
 import { useState } from "react";
-import { useAuth } from "./providers";
+import Link from "next/link";
+import { createClient } from "@/lib/supabase";
 
-function ComingSoonPopup({ onClose }: { onClose: () => void }) {
+export default function RegisterPage() {
+  const [step, setStep] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+  const supabase = createClient();
+
+  const [form, setForm] = useState({
+    name: "", title: "", company: "", email: "", experience: "",
+    intro: "", description: "", categories: [] as string[],
+    agentName: "", agentDesc: "", agentLongDesc: "",
+    systemPrompt: "", sampleQuestion: "",
+    basicPrice: "", proPrice: "", trialCount: "3",
+    htmlFile: null as File | null,
+  });
+
+  const update = (key: string, value: string) => setForm(prev => ({ ...prev, [key]: value }));
+
+  const toggleCategory = (cat: string) => {
+    setForm(prev => ({
+      ...prev,
+      categories: prev.categories.includes(cat)
+        ? prev.categories.filter(c => c !== cat)
+        : prev.categories.length < 3
+          ? [...prev.categories, cat]
+          : prev.categories
+    }));
+  };
+
+  // HTML 파일에서 시스템 프롬프트 자동 추출
+  const extractSystemPrompt = (htmlContent: string): string => {
+    // 방법 1: systemPrompt 변수 찾기
+    const patterns = [
+      /const\s+systemPrompt\s*=\s*`([^`]+)`/s,
+      /const\s+systemPrompt\s*=\s*"([^"]+)"/s,
+      /const\s+systemPrompt\s*=\s*'([^']+)'/s,
+      /system:\s*`([^`]+)`/s,
+      /system:\s*"([^"]+)"/s,
+      /"system"\s*,\s*content\s*:\s*"([^"]+)"/s,
+      /role:\s*['"]system['"]\s*,\s*content:\s*['"]([^'"]+)['"]/s,
+    ];
+
+    for (const pattern of patterns) {
+      const match = htmlContent.match(pattern);
+      if (match && match[1] && match[1].length > 20) {
+        return match[1].trim();
+      }
+    }
+    return "";
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const content = ev.target?.result as string;
+      const extracted = extractSystemPrompt(content);
+
+      if (extracted) {
+        setForm(prev => ({
+          ...prev,
+          htmlFile: file,
+          systemPrompt: extracted,
+        }));
+        setError("");
+      } else {
+        setForm(prev => ({ ...prev, htmlFile: file }));
+        setError("시스템 프롬프트를 자동으로 찾지 못했어요. 아래에서 직접 입력해주세요.");
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleSubmit = async () => {
+    setLoading(true);
+    setError("");
+
+    if (!form.name || !form.email || !form.title) {
+      setError("이름, 이메일, 직함은 필수입니다.");
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      const { error: expertError } = await supabase.from("experts").insert({
+        user_id: user?.id || null,
+        name: form.name,
+        title: form.title,
+        company: form.company,
+        email: form.email,
+        experience: form.experience,
+        intro: form.intro,
+        description: form.description,
+        categories: form.categories,
+        status: "pending",
+      });
+
+      if (expertError) throw expertError;
+
+      if (form.agentName) {
+        const { error: agentError } = await supabase.from("agents").insert({
+          name: form.agentName,
+          description: form.agentDesc,
+          long_description: form.agentLongDesc,
+          system_prompt: form.systemPrompt,
+          sample_question: form.sampleQuestion,
+          category: form.categories[0] || "기타",
+          price: parseInt(form.basicPrice) || 0,
+          author_name: form.name,
+          expert_email: form.email,
+          emoji: "🤖",
+          tags: form.categories,
+          status: "pending",
+        });
+        if (agentError) throw agentError;
+      }
+
+      setSuccess(true);
+    } catch (err) {
+      console.error(err);
+      setError("등록 중 오류가 발생했어요. 다시 시도해주세요.");
+    }
+    setLoading(false);
+  };
+
+  if (success) {
+    return (
+      <main className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-5">
+        <div className="bg-white rounded-2xl p-10 shadow-xl max-w-md w-full text-center">
+          <div className="text-6xl mb-4">🎉</div>
+          <h2 className="text-2xl font-extrabold text-gray-900 mb-3">등록 신청 완료!</h2>
+          <p className="text-gray-500 text-sm leading-relaxed mb-6">
+            전문가 등록 신청이 완료됐어요.<br />
+            검토 후 1~3일 내로 이메일로 안내드릴게요!
+          </p>
+          <Link href="/">
+            <button className="w-full py-3 bg-blue-600 text-white font-bold rounded-full hover:bg-blue-700 transition-all text-sm">홈으로 돌아가기</button>
+          </Link>
+        </div>
+      </main>
+    );
+  }
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-white rounded-2xl p-8 shadow-2xl max-w-sm w-full mx-4 text-center" onClick={(e) => e.stopPropagation()}>
-        <div className="text-5xl mb-4">🚀</div>
-        <h3 className="text-xl font-extrabold text-gray-900 mb-2">준비 중이에요!</h3>
-        <p className="text-gray-500 text-sm leading-relaxed mb-6">
-          해당 기능은 현재 준비 중이에요.<br />
-          곧 더 나은 모습으로 찾아올게요!
-        </p>
-        <button onClick={onClose} className="w-full py-3 bg-blue-600 text-white font-bold rounded-full hover:bg-blue-700 transition-all text-sm">확인</button>
-      </div>
-    </div>
-  );
-}
-
-export default function Home() {
-  const [showPopup, setShowPopup] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const { user } = useAuth();
-  const popup = () => setShowPopup(true);
-
-  return (
-    <main className="min-h-screen bg-white">
-      {showPopup && <ComingSoonPopup onClose={() => setShowPopup(false)} />}
-
-      {/* 네비게이션 */}
+    <main className="min-h-screen bg-gray-50">
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-100 h-16 flex items-center justify-between px-5 md:px-10">
         <Link href="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-orange-500 flex items-center justify-center text-white text-sm">🤖</div>
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-orange-500 flex items-center justify-center text-sm">🤖</div>
           <span className="text-xl font-extrabold text-gray-900">Agentora</span>
         </Link>
-
-        {/* 데스크탑 메뉴 */}
-        <div className="hidden md:flex items-center gap-6">
-          <Link href="/agents" className="text-sm font-medium text-gray-500 hover:text-blue-600">전체 Agent</Link>
-          <button onClick={popup} className="text-sm font-medium text-gray-500 hover:text-blue-600">카테고리</button>
-          <Link href="/register" className="text-sm font-medium text-gray-500 hover:text-blue-600">전문가</Link>
-          <button onClick={popup} className="text-sm font-medium text-gray-500 hover:text-blue-600">가격 안내</button>
-        </div>
-
-        <div className="hidden md:flex items-center gap-3">
-          {user ? (
-            <Link href="/mypage">
-              <button className="px-5 py-2 rounded-full text-sm font-semibold border border-gray-200 text-gray-600 hover:border-blue-500 hover:text-blue-600 transition-all">마이페이지</button>
-            </Link>
-          ) : (
-            <>
-              <Link href="/login"><button className="px-5 py-2 rounded-full text-sm font-semibold border border-gray-200 text-gray-600 hover:border-blue-500 hover:text-blue-600 transition-all">로그인</button></Link>
-              <Link href="/login"><button className="px-5 py-2 rounded-full text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-all shadow-md">무료 시작</button></Link>
-            </>
-          )}
-        </div>
-
-        {/* 모바일 햄버거 */}
-        <button className="md:hidden flex flex-col gap-1.5 p-2" onClick={() => setMenuOpen(!menuOpen)}>
-          <span className={`block w-6 h-0.5 bg-gray-700 transition-all ${menuOpen ? "rotate-45 translate-y-2" : ""}`}></span>
-          <span className={`block w-6 h-0.5 bg-gray-700 transition-all ${menuOpen ? "opacity-0" : ""}`}></span>
-          <span className={`block w-6 h-0.5 bg-gray-700 transition-all ${menuOpen ? "-rotate-45 -translate-y-2" : ""}`}></span>
-        </button>
       </nav>
 
-      {/* 모바일 메뉴 */}
-      {menuOpen && (
-        <div className="fixed top-16 left-0 right-0 z-40 bg-white border-b border-gray-100 shadow-lg md:hidden">
-          <div className="flex flex-col p-4 gap-4">
-            <Link href="/agents" onClick={() => setMenuOpen(false)} className="text-sm font-semibold text-gray-700 py-2 border-b border-gray-100">전체 Agent</Link>
-            <button onClick={() => { setMenuOpen(false); popup(); }} className="text-sm font-semibold text-gray-700 py-2 border-b border-gray-100 text-left">카테고리</button>
-            <Link href="/register" onClick={() => setMenuOpen(false)} className="text-sm font-semibold text-gray-700 py-2 border-b border-gray-100">전문가</Link>
-            <button onClick={() => { setMenuOpen(false); popup(); }} className="text-sm font-semibold text-gray-700 py-2 border-b border-gray-100 text-left">가격 안내</button>
-            <div className="flex gap-3 pt-2">
-              {user ? (
-                <Link href="/mypage" className="flex-1" onClick={() => setMenuOpen(false)}>
-                  <button className="w-full py-2.5 rounded-full text-sm font-semibold bg-blue-600 text-white">마이페이지</button>
-                </Link>
-              ) : (
-                <>
-                  <Link href="/login" className="flex-1" onClick={() => setMenuOpen(false)}>
-                    <button className="w-full py-2.5 rounded-full text-sm font-semibold border border-gray-200 text-gray-600">로그인</button>
-                  </Link>
-                  <Link href="/login" className="flex-1" onClick={() => setMenuOpen(false)}>
-                    <button className="w-full py-2.5 rounded-full text-sm font-semibold bg-blue-600 text-white">무료 시작</button>
-                  </Link>
-                </>
-              )}
-            </div>
+      <div className="pt-16 bg-gradient-to-br from-gray-900 to-blue-900 px-5 md:px-10 py-8 md:py-10">
+        <div className="max-w-3xl mx-auto">
+          <h1 className="text-xl md:text-2xl font-extrabold text-white mb-2">🧑‍💼 전문가 Agent 등록</h1>
+          <p className="text-sm text-gray-400 mb-5">전문 지식을 AI Agent로 패키징하고 수천 개 기업에 공급하세요.</p>
+          <div className="w-full bg-white/10 rounded-full h-1.5 mb-3">
+            <div className="h-full rounded-full bg-gradient-to-r from-blue-400 to-orange-400 transition-all duration-500"
+              style={{ width: step === 1 ? "33%" : step === 2 ? "66%" : "100%" }}></div>
           </div>
-        </div>
-      )}
-
-      {/* 히어로 섹션 */}
-      <section className="pt-28 md:pt-40 pb-16 md:pb-24 px-5 md:px-10 bg-gradient-to-br from-blue-50 via-white to-orange-50">
-        <div className="max-w-5xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 bg-white border border-blue-100 rounded-full px-4 py-1.5 text-xs md:text-sm font-semibold text-blue-600 mb-6 md:mb-8 shadow-sm">
-            <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-            지금 AI Agent 마켓플레이스 오픈 준비 중이에요
+          <div className="flex justify-between text-xs font-semibold">
+            <span className={step >= 1 ? "text-white" : "text-gray-500"}>① 기본 정보</span>
+            <span className={step >= 2 ? "text-white" : "text-gray-500"}>② Agent 설정</span>
+            <span className={step >= 3 ? "text-white" : "text-gray-500"}>③ 가격·공개</span>
           </div>
-          <h1 className="text-3xl md:text-5xl font-extrabold text-gray-900 leading-tight tracking-tight mb-4 md:mb-6">
-            필요한 AI Agent를<br />
-            <span className="text-blue-600">직접 맛보고</span> 도입하세요
-          </h1>
-          <p className="text-base md:text-lg text-gray-500 mb-8 md:mb-10 leading-relaxed">
-            검증된 전문가들이 만든 AI Agent를 체험해보고,<br />
-            우리 회사에 꼭 맞는 솔루션만 골라 구독하세요.
-          </p>
-
-          <div className="flex items-center bg-white rounded-full shadow-xl border border-blue-100 px-4 md:px-5 py-2 max-w-2xl mx-auto mb-5">
-            <span className="text-gray-400 mr-2 md:mr-3">🔍</span>
-            <input type="text" placeholder="어떤 업무를 자동화하고 싶으세요?" className="flex-1 outline-none text-sm text-gray-700 bg-transparent min-w-0" />
-            <Link href="/agents">
-              <button className="ml-2 md:ml-3 px-3 md:px-5 py-2 bg-blue-600 text-white text-xs md:text-sm font-bold rounded-full hover:bg-blue-700 transition-all whitespace-nowrap">검색하기</button>
-            </Link>
-          </div>
-
-          <div className="flex gap-2 justify-center flex-wrap">
-            {["📊 데이터 분석", "📞 고객 응대", "📝 계약서 검토", "💼 영업 지원", "⚖️ 법률", "💰 회계·세무"].map((tag) => (
-              <button key={tag} onClick={popup}>
-                <span className="px-3 py-1.5 bg-white border border-gray-200 rounded-full text-xs font-semibold text-gray-600 cursor-pointer hover:border-blue-400 hover:text-blue-600 transition-all">{tag}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* 통계 바 */}
-      <div className="bg-gray-900 py-8">
-        <div className="max-w-4xl mx-auto flex justify-center gap-8 md:gap-20 px-5 flex-wrap">
-          {[
-            { num: "오픈 예정", label: "등록된 AI Agent" },
-            { num: "모집 중", label: "전문가 등록" },
-            { num: "준비 중", label: "도입 기업" },
-            { num: "곧 공개", label: "고객 만족도" },
-          ].map((s) => (
-            <div key={s.label} className="text-center">
-              <div className="text-lg md:text-xl font-extrabold text-white">{s.num}</div>
-              <div className="text-xs text-gray-400 mt-1">{s.label}</div>
-            </div>
-          ))}
         </div>
       </div>
 
-      {/* 카테고리 */}
-      <section className="py-12 md:py-16 px-5 md:px-10 bg-gray-50">
-        <div className="max-w-5xl mx-auto">
-          <div className="flex justify-between items-end mb-6 md:mb-8">
-            <h2 className="text-xl md:text-2xl font-extrabold text-gray-900">카테고리 탐색 🗂️</h2>
-            <Link href="/agents" className="text-sm font-semibold text-blue-600 hover:underline">전체 보기 →</Link>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-            {[
-              { icon: "📊", name: "데이터 분석" },
-              { icon: "📞", name: "고객 응대" },
-              { icon: "📝", name: "문서 자동화" },
-              { icon: "💼", name: "영업·마케팅" },
-              { icon: "⚖️", name: "법률·계약" },
-              { icon: "💰", name: "재무·회계" },
-              { icon: "🏗️", name: "제조·품질" },
-              { icon: "🔧", name: "IT·개발" },
-            ].map((cat) => (
-              <button key={cat.name} onClick={popup} className="text-left">
-                <div className="bg-white rounded-2xl border border-gray-200 p-4 md:p-5 flex items-center gap-3 md:gap-4 cursor-pointer hover:border-blue-400 hover:shadow-md transition-all w-full">
-                  <span className="text-2xl md:text-3xl">{cat.icon}</span>
-                  <div>
-                    <div className="text-sm font-bold text-gray-900">{cat.name}</div>
-                    <div className="text-xs text-gray-400 mt-0.5">준비 중</div>
+      <div className="max-w-3xl mx-auto px-5 md:px-10 py-8">
+        {error && <div className="bg-red-50 text-red-500 text-sm font-semibold px-4 py-3 rounded-xl mb-4">{error}</div>}
+
+        {/* STEP 1 */}
+        {step === 1 && (
+          <div className="flex flex-col gap-5">
+            <div className="bg-white rounded-2xl border border-gray-200 p-5 md:p-6">
+              <h2 className="text-base font-extrabold text-gray-900 mb-1">👤 전문가 프로필</h2>
+              <p className="text-xs text-gray-400 mb-5">구매자가 신뢰할 수 있는 전문가 정보를 입력해주세요.</p>
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-col md:flex-row gap-3">
+                  <div className="flex-1">
+                    <label className="block text-xs font-bold text-gray-700 mb-1.5">이름 <span className="text-orange-500">*</span></label>
+                    <input type="text" placeholder="홍길동" value={form.name} onChange={e => update("name", e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-500 bg-gray-50" />
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-xs font-bold text-gray-700 mb-1.5">직함·자격 <span className="text-orange-500">*</span></label>
+                    <input type="text" placeholder="예: 변호사, 데이터 사이언티스트" value={form.title} onChange={e => update("title", e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-500 bg-gray-50" />
                   </div>
                 </div>
-              </button>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* 전문가 모집 CTA */}
-      <section className="mx-4 md:mx-10 my-12 md:my-16 rounded-3xl bg-gradient-to-br from-gray-900 to-blue-900 p-8 md:p-14 flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
-        <div>
-          <h2 className="text-xl md:text-2xl font-extrabold text-white mb-3">🧑‍💼 전문가이신가요?<br />첫 번째 Agent를 등록해보세요!</h2>
-          <p className="text-gray-300 text-sm leading-relaxed">Agentora의 첫 번째 전문가가 되어<br />수많은 기업에 AI Agent를 공급하세요. 등록은 무료!</p>
-          <div className="flex gap-3 mt-6 flex-wrap">
-            <Link href="/register">
-              <button className="px-6 py-3 bg-orange-500 text-white font-bold rounded-full text-sm hover:opacity-90 transition-all shadow-lg">전문가 등록하기</button>
-            </Link>
-            <button onClick={popup} className="px-6 py-3 border border-white/30 text-white font-semibold rounded-full text-sm hover:bg-white/10 transition-all">판매 가이드 보기</button>
-          </div>
-        </div>
-        <div className="flex gap-8 md:gap-10 flex-shrink-0">
-          <div className="text-center">
-            <div className="text-xl md:text-2xl font-extrabold text-white">최대 70%</div>
-            <div className="text-xs text-gray-400 mt-1">수익 배분율</div>
-          </div>
-          <div className="text-center">
-            <div className="text-xl md:text-2xl font-extrabold text-white">무료 등록</div>
-            <div className="text-xs text-gray-400 mt-1">지금 바로 시작</div>
-          </div>
-        </div>
-      </section>
-
-      {/* 푸터 */}
-      <footer className="bg-gray-900 px-5 md:px-10 pt-10 md:pt-12 pb-8">
-        <div className="max-w-5xl mx-auto flex flex-col md:flex-row justify-between gap-8 md:gap-10">
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-600 to-orange-500 flex items-center justify-center text-sm">🤖</div>
-              <span className="text-lg font-extrabold text-white">Agentora</span>
-            </div>
-            <p className="text-xs text-gray-500 leading-relaxed">AI Agent를 맛보고 도입하는<br />B2B 전문 마켓플레이스</p>
-          </div>
-          <div className="flex gap-8 md:gap-14 flex-wrap">
-            {[
-              { title: "서비스", links: [{ label: "Agent 탐색", href: "/agents" }, { label: "카테고리", href: null }, { label: "전문가 찾기", href: null }, { label: "가격 안내", href: null }] },
-              { title: "전문가", links: [{ label: "전문가 등록", href: "/register" }, { label: "판매 가이드", href: null }, { label: "수익 정산", href: null }, { label: "파트너 혜택", href: null }] },
-              { title: "회사", links: [{ label: "소개", href: null }, { label: "블로그", href: null }, { label: "고객센터", href: null }, { label: "이용약관", href: null }] },
-            ].map((col) => (
-              <div key={col.title}>
-                <h4 className="text-xs font-bold text-white mb-4 uppercase tracking-wider">{col.title}</h4>
-                <ul className="flex flex-col gap-2.5">
-                  {col.links.map((link) => (
-                    <li key={link.label}>
-                      {link.href ? (
-                        <Link href={link.href} className="text-xs text-gray-500 hover:text-white transition-colors">{link.label}</Link>
-                      ) : (
-                        <button onClick={popup} className="text-xs text-gray-500 hover:text-white transition-colors">{link.label}</button>
-                      )}
-                    </li>
-                  ))}
-                </ul>
+                <div className="flex flex-col md:flex-row gap-3">
+                  <div className="flex-1">
+                    <label className="block text-xs font-bold text-gray-700 mb-1.5">소속 기관</label>
+                    <input type="text" placeholder="(주)테크컴퍼니" value={form.company} onChange={e => update("company", e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-500 bg-gray-50" />
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-xs font-bold text-gray-700 mb-1.5">경력 연수</label>
+                    <select value={form.experience} onChange={e => update("experience", e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-500 bg-gray-50">
+                      <option value="">선택해주세요</option>
+                      <option value="1~3년">1~3년</option>
+                      <option value="4~7년">4~7년</option>
+                      <option value="8~15년">8~15년</option>
+                      <option value="15년 이상">15년 이상</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1.5">이메일 <span className="text-orange-500">*</span></label>
+                  <input type="email" placeholder="expert@example.com" value={form.email} onChange={e => update("email", e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-500 bg-gray-50" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1.5">한 줄 소개</label>
+                  <input type="text" placeholder="예: 10년 경력의 계약 전문 변호사입니다" maxLength={60} value={form.intro} onChange={e => update("intro", e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-500 bg-gray-50" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1.5">상세 소개</label>
+                  <textarea rows={4} placeholder="전문 분야, 주요 경력, Agent 개발 배경 등을 작성해주세요." value={form.description} onChange={e => update("description", e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-500 bg-gray-50 resize-none"></textarea>
+                </div>
               </div>
-            ))}
+            </div>
+
+            <div className="bg-white rounded-2xl border border-gray-200 p-5 md:p-6">
+              <h2 className="text-base font-extrabold text-gray-900 mb-1">🏷️ 전문 분야</h2>
+              <p className="text-xs text-gray-400 mb-4">최대 3개 선택해주세요. ({form.categories.length}/3)</p>
+              <div className="flex flex-wrap gap-2">
+                {["📊 데이터 분석", "📞 고객 응대", "📝 문서 자동화", "💼 영업·마케팅", "⚖️ 법률·계약", "💰 재무·회계", "🏗️ 제조·품질", "🔧 IT·개발", "🏥 의료·헬스", "🎓 교육·HR"].map((cat) => (
+                  <button key={cat} onClick={() => toggleCategory(cat)}
+                    className={`px-4 py-2 rounded-full border text-xs font-semibold transition-all ${form.categories.includes(cat) ? "border-blue-500 text-blue-600 bg-blue-50" : "border-gray-200 text-gray-600 hover:border-blue-400"}`}>
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <button onClick={() => setStep(2)} className="px-8 py-3 bg-blue-600 text-white font-bold rounded-full hover:bg-blue-700 transition-all shadow-md text-sm">다음 단계 →</button>
+            </div>
           </div>
-        </div>
-        <div className="max-w-5xl mx-auto mt-8 pt-6 border-t border-gray-800 flex flex-col md:flex-row justify-between gap-2 text-xs text-gray-600">
-          <span>© 2026 Agentora. All rights reserved.</span>
-          <span>개인정보처리방침 · 이용약관</span>
-        </div>
-      </footer>
+        )}
+
+        {/* STEP 2 */}
+        {step === 2 && (
+          <div className="flex flex-col gap-5">
+            <div className="bg-white rounded-2xl border border-gray-200 p-5 md:p-6">
+              <h2 className="text-base font-extrabold text-gray-900 mb-1">🤖 Agent 설정</h2>
+              <p className="text-xs text-gray-400 mb-5">HTML 파일을 업로드하면 설정이 자동으로 추출돼요!</p>
+
+              {/* HTML 파일 업로드 */}
+              <div className="mb-5">
+                <label className="block text-xs font-bold text-gray-700 mb-1.5">
+                  🚀 HTML Agent 파일 업로드 (자동 추출)
+                </label>
+                <div
+                  className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${form.htmlFile ? "border-blue-400 bg-blue-50" : "border-gray-200 hover:border-blue-400 hover:bg-blue-50"}`}
+                  onClick={() => document.getElementById("htmlFileInput")?.click()}
+                >
+                  {form.htmlFile ? (
+                    <div>
+                      <div className="text-2xl mb-2">✅</div>
+                      <p className="text-sm font-bold text-blue-600">{form.htmlFile.name}</p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {form.systemPrompt ? "시스템 프롬프트 자동 추출 완료!" : "파일 업로드 완료"}
+                      </p>
+                    </div>
+                  ) : (
+                    <div>
+                      <div className="text-3xl mb-2">📁</div>
+                      <p className="text-sm font-semibold text-gray-600">HTML 파일을 클릭해서 업로드하세요</p>
+                      <p className="text-xs text-gray-400 mt-1">시스템 프롬프트가 자동으로 추출돼요</p>
+                    </div>
+                  )}
+                </div>
+                <input
+                  id="htmlFileInput"
+                  type="file"
+                  accept=".html"
+                  className="hidden"
+                  onChange={handleFileUpload}
+                />
+              </div>
+
+              <div className="flex flex-col gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1.5">Agent 이름 <span className="text-orange-500">*</span></label>
+                  <input type="text" placeholder="예: 계약서 리뷰 Agent" maxLength={40} value={form.agentName} onChange={e => update("agentName", e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-500 bg-gray-50" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1.5">한 줄 설명 <span className="text-orange-500">*</span></label>
+                  <input type="text" placeholder="예: 계약서를 업로드하면 위험 조항을 즉시 분석합니다" maxLength={80} value={form.agentDesc} onChange={e => update("agentDesc", e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-500 bg-gray-50" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1.5">상세 설명</label>
+                  <textarea rows={3} placeholder="Agent가 어떤 문제를 해결하는지 작성해주세요." value={form.agentLongDesc} onChange={e => update("agentLongDesc", e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-500 bg-gray-50 resize-none"></textarea>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1.5">
+                    시스템 프롬프트
+                    {form.systemPrompt && <span className="ml-2 text-green-500 text-xs">✅ 자동 추출됨</span>}
+                  </label>
+                  <textarea rows={5} placeholder="HTML 파일을 업로드하면 자동으로 채워져요. 직접 입력도 가능해요." value={form.systemPrompt} onChange={e => update("systemPrompt", e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-500 bg-gray-50 resize-none font-mono"></textarea>
+                  <p className="text-xs text-gray-400 mt-1">구매자에게는 보이지 않습니다.</p>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1.5">맛보기 예시 질문</label>
+                  <input type="text" placeholder="예: 이 계약서의 불리한 조항을 찾아줘" value={form.sampleQuestion} onChange={e => update("sampleQuestion", e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-500 bg-gray-50" />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-between">
+              <button onClick={() => setStep(1)} className="px-8 py-3 border border-gray-200 text-gray-600 font-bold rounded-full hover:border-blue-400 hover:text-blue-600 transition-all text-sm">← 이전</button>
+              <button onClick={() => setStep(3)} className="px-8 py-3 bg-blue-600 text-white font-bold rounded-full hover:bg-blue-700 transition-all shadow-md text-sm">다음 단계 →</button>
+            </div>
+          </div>
+        )}
+
+        {/* STEP 3 */}
+        {step === 3 && (
+          <div className="flex flex-col gap-5">
+            <div className="bg-white rounded-2xl border border-gray-200 p-5 md:p-6">
+              <h2 className="text-base font-extrabold text-gray-900 mb-4">💰 가격 설정</h2>
+              <div className="flex flex-col md:flex-row gap-3 mb-4">
+                <div className="flex-1">
+                  <label className="block text-xs font-bold text-gray-700 mb-1.5">베이직 플랜 (월, 원) <span className="text-orange-500">*</span></label>
+                  <input type="number" placeholder="예: 89000" value={form.basicPrice} onChange={e => update("basicPrice", e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-500 bg-gray-50" />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-xs font-bold text-gray-700 mb-1.5">프로 플랜 (월, 원)</label>
+                  <input type="number" placeholder="예: 180000" value={form.proPrice} onChange={e => update("proPrice", e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-500 bg-gray-50" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1.5">맛보기 체험 횟수</label>
+                <select value={form.trialCount} onChange={e => update("trialCount", e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-500 bg-gray-50">
+                  <option value="3">3회 무료 체험</option>
+                  <option value="5">5회 무료 체험</option>
+                  <option value="10">10회 무료 체험</option>
+                </select>
+              </div>
+            </div>
+
+            {/* 체크리스트 */}
+            <div className="bg-gradient-to-br from-blue-50 to-orange-50 rounded-2xl border border-blue-100 p-5">
+              <h3 className="text-sm font-extrabold text-gray-900 mb-3">📋 등록 전 체크리스트</h3>
+              {[
+                { label: "전문가 프로필을 완성했나요?", done: !!(form.name && form.title && form.email) },
+                { label: "Agent 이름과 설명을 입력했나요?", done: !!(form.agentName && form.agentDesc) },
+                { label: "시스템 프롬프트가 설정됐나요?", done: !!form.systemPrompt },
+                { label: "가격을 설정했나요?", done: !!form.basicPrice },
+              ].map((item) => (
+                <div key={item.label} className="flex items-center gap-2 text-sm mb-2">
+                  <span>{item.done ? "✅" : "⬜"}</span> {item.label}
+                </div>
+              ))}
+            </div>
+
+            <div className="flex justify-between">
+              <button onClick={() => setStep(2)} className="px-8 py-3 border border-gray-200 text-gray-600 font-bold rounded-full hover:border-blue-400 hover:text-blue-600 transition-all text-sm">← 이전</button>
+              <button onClick={handleSubmit} disabled={loading}
+                className="px-8 py-3 bg-blue-600 text-white font-bold rounded-full hover:bg-blue-700 transition-all shadow-md text-sm disabled:opacity-50">
+                {loading ? "등록 중..." : "등록 신청하기 🎉"}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </main>
   );
 }
