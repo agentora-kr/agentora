@@ -8,16 +8,16 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [htmlUrl, setHtmlUrl] = useState("");
+  const [htmlFile, setHtmlFile] = useState<File | null>(null);
+  const [systemPrompt, setSystemPrompt] = useState("");
   const supabase = createClient();
 
   const [form, setForm] = useState({
     name: "", title: "", company: "", email: "", experience: "",
     intro: "", description: "", categories: [] as string[],
     agentName: "", agentDesc: "", agentLongDesc: "",
-    systemPrompt: "", sampleQuestion: "",
-    basicPrice: "", proPrice: "", trialCount: "3",
-    htmlFile: null as File | null,
-    htmlUrl: "",
+    sampleQuestion: "", basicPrice: "", proPrice: "", trialCount: "3",
   });
 
   const update = (key: string, value: string) => setForm(prev => ({ ...prev, [key]: value }));
@@ -37,20 +37,15 @@ export default function RegisterPage() {
     const patterns = [
       /const\s+systemPrompt\s*=\s*`([\s\S]+?)`/,
       /const\s+systemPrompt\s*=\s*"([\s\S]+?)"/,
-      /const\s+systemPrompt\s*=\s*'([\s\S]+?)'/,
       /system:\s*`([\s\S]+?)`/,
       /system:\s*"([\s\S]+?)"/,
       /return\s*`(당신은[\s\S]+?)`/,
       /`(당신은[\s\S]{50,}?)`/,
       /`(You are[\s\S]{50,}?)`/,
-      /"(당신은[\s\S]{50,})"/,
     ];
-
     for (const pattern of patterns) {
       const match = htmlContent.match(pattern);
-      if (match && match[1] && match[1].trim().length > 30) {
-        return match[1].trim();
-      }
+      if (match && match[1] && match[1].trim().length > 30) return match[1].trim();
     }
     return "";
   };
@@ -59,25 +54,22 @@ export default function RegisterPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    setHtmlFile(file);
+    setError("");
+
     const reader = new FileReader();
     reader.onload = async (ev) => {
       const content = ev.target?.result as string;
-      const extracted = extractSystemPrompt(content);
 
       // 시스템 프롬프트 추출
-      setForm(prev => ({
-        ...prev,
-        htmlFile: file,
-        systemPrompt: extracted || prev.systemPrompt,
-      }));
-
-      if (!extracted) {
-        setError("시스템 프롬프트를 자동으로 찾지 못했어요. 아래에서 직접 입력해주세요.");
+      const extracted = extractSystemPrompt(content);
+      if (extracted) {
+        setSystemPrompt(extracted);
       } else {
-        setError("");
+        setError("시스템 프롬프트를 자동으로 찾지 못했어요. 아래에서 직접 입력해주세요.");
       }
 
-      // HTML 파일 Storage 업로드
+      // Storage 업로드
       try {
         const uploadFormData = new FormData();
         uploadFormData.append("file", file);
@@ -90,7 +82,10 @@ export default function RegisterPage() {
 
         const data = await res.json();
         if (data.url) {
-          setForm(prev => ({ ...prev, htmlUrl: data.url }));
+          setHtmlUrl(data.url);
+          console.log("HTML 업로드 성공:", data.url);
+        } else {
+          console.error("업로드 실패:", data);
         }
       } catch (err) {
         console.error("HTML 업로드 오류:", err);
@@ -132,9 +127,9 @@ export default function RegisterPage() {
           name: form.agentName,
           description: form.agentDesc,
           long_description: form.agentLongDesc,
-          system_prompt: form.systemPrompt,
+          system_prompt: systemPrompt,
           sample_question: form.sampleQuestion,
-          html_url: form.htmlUrl || null,
+          html_url: htmlUrl || null,
           category: form.categories[0] || "기타",
           price: parseInt(form.basicPrice) || 0,
           author_name: form.name,
@@ -275,17 +270,17 @@ export default function RegisterPage() {
               <div className="mb-5">
                 <label className="block text-xs font-bold text-gray-700 mb-1.5">🚀 HTML Agent 파일 업로드</label>
                 <div
-                  className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${form.htmlFile ? "border-blue-400 bg-blue-50" : "border-gray-200 hover:border-blue-400 hover:bg-blue-50"}`}
+                  className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${htmlFile ? "border-blue-400 bg-blue-50" : "border-gray-200 hover:border-blue-400 hover:bg-blue-50"}`}
                   onClick={() => document.getElementById("htmlFileInput")?.click()}
                 >
-                  {form.htmlFile ? (
+                  {htmlFile ? (
                     <div>
                       <div className="text-2xl mb-2">✅</div>
-                      <p className="text-sm font-bold text-blue-600">{form.htmlFile.name}</p>
+                      <p className="text-sm font-bold text-blue-600">{htmlFile.name}</p>
                       <p className="text-xs text-gray-400 mt-1">
-                        {form.htmlUrl ? "✅ Storage 업로드 완료!" : "⏳ 업로드 중..."}
+                        {htmlUrl ? "✅ Storage 업로드 완료!" : "⏳ 업로드 중..."}
                       </p>
-                      {form.systemPrompt && <p className="text-xs text-green-500 mt-1">✅ 시스템 프롬프트 자동 추출됨</p>}
+                      {systemPrompt && <p className="text-xs text-green-500 mt-1">✅ 시스템 프롬프트 자동 추출됨</p>}
                     </div>
                   ) : (
                     <div>
@@ -314,9 +309,9 @@ export default function RegisterPage() {
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1.5">
                     시스템 프롬프트
-                    {form.systemPrompt && <span className="ml-2 text-green-500 text-xs">✅ 자동 추출됨</span>}
+                    {systemPrompt && <span className="ml-2 text-green-500 text-xs">✅ 자동 추출됨</span>}
                   </label>
-                  <textarea rows={5} placeholder="HTML 파일 업로드 시 자동으로 채워져요. 직접 입력도 가능해요." value={form.systemPrompt} onChange={e => update("systemPrompt", e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-500 bg-gray-50 resize-none font-mono"></textarea>
+                  <textarea rows={5} placeholder="HTML 파일 업로드 시 자동으로 채워져요. 직접 입력도 가능해요." value={systemPrompt} onChange={e => setSystemPrompt(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-500 bg-gray-50 resize-none font-mono"></textarea>
                   <p className="text-xs text-gray-400 mt-1">구매자에게는 보이지 않습니다.</p>
                 </div>
                 <div>
@@ -362,7 +357,7 @@ export default function RegisterPage() {
               {[
                 { label: "전문가 프로필을 완성했나요?", done: !!(form.name && form.title && form.email) },
                 { label: "Agent 이름과 설명을 입력했나요?", done: !!(form.agentName && form.agentDesc) },
-                { label: "HTML 파일을 업로드했나요?", done: !!form.htmlUrl },
+                { label: "HTML 파일을 업로드했나요?", done: !!htmlUrl },
                 { label: "가격을 설정했나요?", done: !!form.basicPrice },
               ].map((item) => (
                 <div key={item.label} className="flex items-center gap-2 text-sm mb-2">
