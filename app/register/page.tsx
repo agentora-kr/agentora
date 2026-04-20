@@ -32,25 +32,27 @@ export default function RegisterPage() {
     }));
   };
 
-  // HTML 파일에서 시스템 프롬프트 자동 추출
   const extractSystemPrompt = (htmlContent: string): string => {
-    // 방법 1: systemPrompt 변수 찾기
-    const patterns = [
-      /const\s+systemPrompt\s*=\s*`([^`]+)`/s,
-      /const\s+systemPrompt\s*=\s*"([^"]+)"/s,
-      /const\s+systemPrompt\s*=\s*'([^']+)'/s,
-      /system:\s*`([^`]+)`/s,
-      /system:\s*"([^"]+)"/s,
-      /"system"\s*,\s*content\s*:\s*"([^"]+)"/s,
-      /role:\s*['"]system['"]\s*,\s*content:\s*['"]([^'"]+)['"]/s,
-    ];
+    // 백틱 형태: const systemPrompt = `...`
+    let match = htmlContent.match(/const\s+systemPrompt\s*=\s*`([\s\S]+?)`/);
+    if (match && match[1] && match[1].trim().length > 20) return match[1].trim();
 
-    for (const pattern of patterns) {
-      const match = htmlContent.match(pattern);
-      if (match && match[1] && match[1].length > 20) {
-        return match[1].trim();
-      }
-    }
+    // 더블쿼트 형태: const systemPrompt = "..."
+    match = htmlContent.match(/const\s+systemPrompt\s*=\s*"([\s\S]+?)"/);
+    if (match && match[1] && match[1].trim().length > 20) return match[1].trim();
+
+    // system: `...` 형태
+    match = htmlContent.match(/system:\s*`([\s\S]+?)`/);
+    if (match && match[1] && match[1].trim().length > 20) return match[1].trim();
+
+    // system: "..." 형태
+    match = htmlContent.match(/system:\s*"([\s\S]+?)"/);
+    if (match && match[1] && match[1].trim().length > 20) return match[1].trim();
+
+    // role: 'system', content: "..." 형태
+    match = htmlContent.match(/role:\s*['"]system['"]\s*,\s*content:\s*['"`]([\s\S]+?)['"`]/);
+    if (match && match[1] && match[1].trim().length > 20) return match[1].trim();
+
     return "";
   };
 
@@ -346,7 +348,6 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            {/* 체크리스트 */}
             <div className="bg-gradient-to-br from-blue-50 to-orange-50 rounded-2xl border border-blue-100 p-5">
               <h3 className="text-sm font-extrabold text-gray-900 mb-3">📋 등록 전 체크리스트</h3>
               {[
