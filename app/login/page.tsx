@@ -55,7 +55,7 @@ export default function LoginPage() {
       if (role === "expert") {
         setSuccess("가입 완료! 전문가 등록을 진행해주세요 🎉");
       } else {
-        setSuccess("가입 완료! 로그인해주세요 🎉");
+        setSuccess("가입 완료! 이메일을 확인해서 인증을 완료해주세요 📧");
       }
     }
     setLoading(false);
