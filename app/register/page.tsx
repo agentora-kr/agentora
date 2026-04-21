@@ -133,6 +133,14 @@ if (match !== null && match[1] !== undefined && match[1].trim().length > 30) ret
 
       if (expertError) throw expertError;
 
+      // profiles role을 expert로 업데이트
+      if (user?.id) {
+        await supabase
+          .from("profiles")
+          .update({ role: "expert" })
+          .eq("id", user.id);
+      }
+
       if (form.agentName) {
         const { error: agentError } = await supabase.from("agents").insert({
           name: form.agentName,
