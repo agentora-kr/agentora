@@ -123,8 +123,8 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
             <Link href="/mypage"><button className="px-4 py-2 rounded-full text-sm font-semibold border border-gray-200 text-gray-600 hover:border-blue-500 hover:text-blue-600 transition-all">마이페이지</button></Link>
           ) : (
             <>
-              <Link href="/login"><button className="px-4 py-2 rounded-full text-sm font-semibold border border-gray-200 text-gray-600 hover:border-blue-500 transition-all">로그인</button></Link>
-              <Link href="/login"><button className="px-4 py-2 rounded-full text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-all shadow-md">무료 시작</button></Link>
+              <Link href={user ? `/subscribe/${agent.id}` : "/login"}><button className="px-4 py-2 rounded-full text-sm font-semibold border border-gray-200 text-gray-600 hover:border-blue-500 transition-all">로그인</button></Link>
+              <Link href={user ? `/subscribe/${agent.id}` : "/login"}><button className="px-4 py-2 rounded-full text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-all shadow-md">무료 시작</button></Link>
             </>
           )}
         </div>
@@ -261,7 +261,7 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
                 </div>
               ))}
             </div>
-            <Link href="/login">
+            <Link href={user ? `/subscribe/${agent.id}` : "/login"}>
               <button className="w-full py-3 bg-blue-600 text-white font-bold rounded-full hover:bg-blue-700 transition-all shadow-md text-sm mb-2">
                 구독하기
               </button>
