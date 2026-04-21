@@ -24,6 +24,7 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
   const { id } = React.use(params);
   const [agent, setAgent] = useState<Agent | null>(null);
   const [loading, setLoading] = useState(true);
+  const [htmlContent, setHtmlContent] = useState("");
   const [messages, setMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
   const [input, setInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
@@ -36,7 +37,16 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
       const { data, error } = await supabase.from("agents").select("*").eq("id", id).single();
       if (!error && data) {
         setAgent(data);
-        if (!data.html_url) {
+        if (data.html_url) {
+          // HTML 파일 내용 직접 가져오기
+          try {
+            const res = await fetch(data.html_url);
+            const html = await res.text();
+            setHtmlContent(html);
+          } catch (e) {
+            console.error("HTML 로드 실패:", e);
+          }
+        } else {
           setMessages([{
             role: "assistant",
             content: `안녕하세요! 저는 ${data.name}입니다. 👋\n\n${data.description}\n\n궁금한 내용을 질문해주세요!`
@@ -120,7 +130,6 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
         </div>
       </nav>
 
-      {/* 헤더 */}
       <div className="pt-16 bg-white border-b border-gray-100">
         <div className="max-w-5xl mx-auto px-5 md:px-10 py-6 md:py-8">
           <div className="text-xs text-gray-400 mb-4">
@@ -155,11 +164,8 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
       </div>
 
       <div className="max-w-5xl mx-auto px-5 md:px-10 py-6 md:py-8 flex flex-col md:flex-row gap-6">
-
-        {/* 메인 영역 */}
         <div className="flex-1 min-w-0">
           {agent.html_url ? (
-            /* HTML Agent — iframe으로 표시 */
             <div className="bg-white rounded-2xl border-2 border-blue-500 overflow-hidden relative">
               <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-600 to-orange-500 z-10"></div>
               <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
@@ -169,16 +175,21 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
                 </div>
                 <span className="bg-orange-50 text-orange-500 text-xs font-bold px-3 py-1 rounded-full">무료 체험</span>
               </div>
-              <iframe
-                src={agent.html_url}
-                className="w-full"
-                style={{ height: "700px", border: "none" }}
-                title={agent.name}
-                sandbox="allow-scripts allow-same-origin allow-forms"
-              />
+              {htmlContent ? (
+                <iframe
+                  srcDoc={htmlContent}
+                  className="w-full"
+                  style={{ height: "700px", border: "none" }}
+                  title={agent.name}
+                  sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                />
+              ) : (
+                <div className="flex items-center justify-center h-40">
+                  <p className="text-gray-400 text-sm">⏳ 로딩 중...</p>
+                </div>
+              )}
             </div>
           ) : (
-            /* 일반 채팅 UI */
             <div className="bg-white rounded-2xl border-2 border-blue-500 p-5 md:p-6 relative overflow-hidden">
               <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-600 to-orange-500"></div>
               <div className="flex items-center justify-between mb-1">
@@ -237,7 +248,6 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
           )}
         </div>
 
-        {/* 사이드 */}
         <div className="w-full md:w-72 flex-shrink-0 flex flex-col gap-4">
           <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-md">
             <div className="text-center mb-4">
