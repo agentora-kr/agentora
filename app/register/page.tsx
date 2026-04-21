@@ -3,6 +3,12 @@ import { useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase";
 
+const CATEGORIES = [
+  "📊 데이터 분석", "📞 고객 응대", "📝 문서 자동화", "💼 영업·마케팅",
+  "⚖️ 법률·계약", "💰 재무·회계", "🏗️ 제조·품질", "🔧 IT·개발",
+  "🏥 의료·헬스", "🎓 교육·HR"
+];
+
 export default function RegisterPage() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -11,6 +17,7 @@ export default function RegisterPage() {
   const [htmlUrl, setHtmlUrl] = useState("");
   const [htmlFile, setHtmlFile] = useState<File | null>(null);
   const [systemPrompt, setSystemPrompt] = useState("");
+  const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "done" | "error">("idle");
   const supabase = createClient();
 
   const [form, setForm] = useState({
@@ -20,7 +27,8 @@ export default function RegisterPage() {
     sampleQuestion: "", basicPrice: "", proPrice: "", trialCount: "3",
   });
 
-  const update = (key: string, value: string) => setForm(prev => ({ ...prev, [key]: value }));
+  const update = (key: string, value: string) =>
+    setForm(prev => ({ ...prev, [key]: value }));
 
   const toggleCategory = (cat: string) => {
     setForm(prev => ({
@@ -33,18 +41,22 @@ export default function RegisterPage() {
     }));
   };
 
-  const extractSystemPrompt = (htmlContent: string): string => {
+  // 시스템 프롬프트 추출 (패턴 강화)
+  const extractSystemPrompt = (html: string): string => {
     const patterns = [
-      /const\s+systemPrompt\s*=\s*`([\s\S]+?)`/,
-      /const\s+systemPrompt\s*=\s*"([\s\S]+?)"/,
-      /system:\s*`([\s\S]+?)`/,
-      /system:\s*"([\s\S]+?)"/,
-      /return\s*`(당신은[\s\S]+?)`/,
+      /const\s+systemPrompt\s*=\s*`([\s\S]+?)`(?=\s*;|\s*\n)/,
+      /const\s+systemPrompt\s*=\s*["']([\s\S]+?)["'](?=\s*;|\s*\n)/,
+      /system\s*:\s*`([\s\S]+?)`(?=\s*,|\s*\n)/,
+      /system\s*:\s*["']([\s\S]+?)["'](?=\s*,|\s*\n)/,
+      /["']system["']\s*:\s*`([\s\S]+?)`/,
+      /["']system["']\s*:\s*["']([\s\S]+?)["']/,
+      /systemPrompt\s*=\s*`([\s\S]+?)`/,
       /`(당신은[\s\S]{50,}?)`/,
       /`(You are[\s\S]{50,}?)`/,
     ];
+
     for (const pattern of patterns) {
-      const match = htmlContent.match(pattern);
+      const match = html.match(pattern);
       if (match && match[1] && match[1].trim().length > 30) return match[1].trim();
     }
     return "";
@@ -56,6 +68,7 @@ export default function RegisterPage() {
 
     setHtmlFile(file);
     setError("");
+    setUploadStatus("uploading");
 
     const reader = new FileReader();
     reader.onload = async (ev) => {
@@ -63,8 +76,12 @@ export default function RegisterPage() {
 
       // 시스템 프롬프트 추출
       const extracted = extractSystemPrompt(content);
-      if (extracted) {
-        setSystemPrompt(extracted);
+      setSystemPrompt(extracted);
+
+      // Agent 이름 자동 추출
+      const titleMatch = content.match(/<title>(.*?)<\/title>/i);
+      if (titleMatch?.[1] && !form.agentName) {
+        update("agentName", titleMatch[1].replace(/agentora|agent|–|-/gi, "").trim());
       }
 
       // Storage 업로드
@@ -81,12 +98,14 @@ export default function RegisterPage() {
         const data = await res.json();
         if (data.url) {
           setHtmlUrl(data.url);
-          console.log("HTML 업로드 성공:", data.url);
+          setUploadStatus("done");
         } else {
-          console.error("업로드 실패:", data);
+          setUploadStatus("error");
+          setError("파일 업로드에 실패했어요. 다시 시도해주세요.");
         }
-      } catch (err) {
-        console.error("HTML 업로드 오류:", err);
+      } catch {
+        setUploadStatus("error");
+        setError("파일 업로드 중 오류가 발생했어요.");
       }
     };
     reader.readAsText(file);
@@ -107,15 +126,10 @@ export default function RegisterPage() {
 
       const { error: expertError } = await supabase.from("experts").insert({
         user_id: user?.id || null,
-        name: form.name,
-        title: form.title,
-        company: form.company,
-        email: form.email,
-        experience: form.experience,
-        intro: form.intro,
-        description: form.description,
-        categories: form.categories,
-        status: "pending",
+        name: form.name, title: form.title, company: form.company,
+        email: form.email, experience: form.experience,
+        intro: form.intro, description: form.description,
+        categories: form.categories, status: "pending",
       });
 
       if (expertError) throw expertError;
@@ -158,7 +172,9 @@ export default function RegisterPage() {
             검토 후 1~3일 내로 이메일로 안내드릴게요!
           </p>
           <Link href="/">
-            <button className="w-full py-3 bg-blue-600 text-white font-bold rounded-full hover:bg-blue-700 transition-all text-sm">홈으로 돌아가기</button>
+            <button className="w-full py-3 bg-blue-600 text-white font-bold rounded-full hover:bg-blue-700 transition-all text-sm">
+              홈으로 돌아가기
+            </button>
           </Link>
         </div>
       </main>
@@ -167,6 +183,7 @@ export default function RegisterPage() {
 
   return (
     <main className="min-h-screen bg-gray-50">
+      {/* 네비게이션 */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-100 h-16 flex items-center justify-between px-5 md:px-10">
         <Link href="/" className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-orange-500 flex items-center justify-center text-sm">🤖</div>
@@ -174,13 +191,16 @@ export default function RegisterPage() {
         </Link>
       </nav>
 
+      {/* 헤더 */}
       <div className="pt-16 bg-gradient-to-br from-gray-900 to-blue-900 px-5 md:px-10 py-8 md:py-10">
         <div className="max-w-3xl mx-auto">
           <h1 className="text-xl md:text-2xl font-extrabold text-white mb-2">🧑‍💼 전문가 Agent 등록</h1>
           <p className="text-sm text-gray-400 mb-5">전문 지식을 AI Agent로 패키징하고 수천 개 기업에 공급하세요.</p>
           <div className="w-full bg-white/10 rounded-full h-1.5 mb-3">
-            <div className="h-full rounded-full bg-gradient-to-r from-blue-400 to-orange-400 transition-all duration-500"
-              style={{ width: step === 1 ? "33%" : step === 2 ? "66%" : "100%" }}></div>
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-blue-400 to-orange-400 transition-all duration-500"
+              style={{ width: step === 1 ? "33%" : step === 2 ? "66%" : "100%" }}
+            />
           </div>
           <div className="flex justify-between text-xs font-semibold">
             <span className={step >= 1 ? "text-white" : "text-gray-500"}>① 기본 정보</span>
@@ -191,8 +211,13 @@ export default function RegisterPage() {
       </div>
 
       <div className="max-w-3xl mx-auto px-5 md:px-10 py-8">
-        {error && <div className="bg-red-50 text-red-500 text-sm font-semibold px-4 py-3 rounded-xl mb-4">{error}</div>}
+        {error && (
+          <div className="bg-red-50 text-red-500 text-sm font-semibold px-4 py-3 rounded-xl mb-4">
+            {error}
+          </div>
+        )}
 
+        {/* STEP 1 */}
         {step === 1 && (
           <div className="flex flex-col gap-5">
             <div className="bg-white rounded-2xl border border-gray-200 p-5 md:p-6">
@@ -202,21 +227,25 @@ export default function RegisterPage() {
                 <div className="flex flex-col md:flex-row gap-3">
                   <div className="flex-1">
                     <label className="block text-xs font-bold text-gray-700 mb-1.5">이름 <span className="text-orange-500">*</span></label>
-                    <input type="text" placeholder="홍길동" value={form.name} onChange={e => update("name", e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-500 bg-gray-50" />
+                    <input type="text" placeholder="홍길동" value={form.name} onChange={e => update("name", e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-500 bg-gray-50" />
                   </div>
                   <div className="flex-1">
                     <label className="block text-xs font-bold text-gray-700 mb-1.5">직함·자격 <span className="text-orange-500">*</span></label>
-                    <input type="text" placeholder="예: 변호사, 데이터 사이언티스트" value={form.title} onChange={e => update("title", e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-500 bg-gray-50" />
+                    <input type="text" placeholder="예: 변호사, 데이터 사이언티스트" value={form.title} onChange={e => update("title", e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-500 bg-gray-50" />
                   </div>
                 </div>
                 <div className="flex flex-col md:flex-row gap-3">
                   <div className="flex-1">
                     <label className="block text-xs font-bold text-gray-700 mb-1.5">소속 기관</label>
-                    <input type="text" placeholder="(주)테크컴퍼니" value={form.company} onChange={e => update("company", e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-500 bg-gray-50" />
+                    <input type="text" placeholder="(주)테크컴퍼니" value={form.company} onChange={e => update("company", e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-500 bg-gray-50" />
                   </div>
                   <div className="flex-1">
                     <label className="block text-xs font-bold text-gray-700 mb-1.5">경력 연수</label>
-                    <select value={form.experience} onChange={e => update("experience", e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-500 bg-gray-50">
+                    <select value={form.experience} onChange={e => update("experience", e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-500 bg-gray-50">
                       <option value="">선택해주세요</option>
                       <option value="1~3년">1~3년</option>
                       <option value="4~7년">4~7년</option>
@@ -227,15 +256,18 @@ export default function RegisterPage() {
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1.5">이메일 <span className="text-orange-500">*</span></label>
-                  <input type="email" placeholder="expert@example.com" value={form.email} onChange={e => update("email", e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-500 bg-gray-50" />
+                  <input type="email" placeholder="expert@example.com" value={form.email} onChange={e => update("email", e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-500 bg-gray-50" />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1.5">한 줄 소개</label>
-                  <input type="text" placeholder="예: 10년 경력의 계약 전문 변호사입니다" maxLength={60} value={form.intro} onChange={e => update("intro", e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-500 bg-gray-50" />
+                  <input type="text" placeholder="예: 10년 경력의 계약 전문 변호사입니다" maxLength={60} value={form.intro} onChange={e => update("intro", e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-500 bg-gray-50" />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1.5">상세 소개</label>
-                  <textarea rows={4} placeholder="전문 분야, 주요 경력, Agent 개발 배경 등을 작성해주세요." value={form.description} onChange={e => update("description", e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-500 bg-gray-50 resize-none"></textarea>
+                  <textarea rows={4} placeholder="전문 분야, 주요 경력, Agent 개발 배경 등을 작성해주세요." value={form.description} onChange={e => update("description", e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-500 bg-gray-50 resize-none" />
                 </div>
               </div>
             </div>
@@ -244,7 +276,7 @@ export default function RegisterPage() {
               <h2 className="text-base font-extrabold text-gray-900 mb-1">🏷️ 전문 분야</h2>
               <p className="text-xs text-gray-400 mb-4">최대 3개 선택해주세요. ({form.categories.length}/3)</p>
               <div className="flex flex-wrap gap-2">
-                {["📊 데이터 분석", "📞 고객 응대", "📝 문서 자동화", "💼 영업·마케팅", "⚖️ 법률·계약", "💰 재무·회계", "🏗️ 제조·품질", "🔧 IT·개발", "🏥 의료·헬스", "🎓 교육·HR"].map((cat) => (
+                {CATEGORIES.map(cat => (
                   <button key={cat} onClick={() => toggleCategory(cat)}
                     className={`px-4 py-2 rounded-full border text-xs font-semibold transition-all ${form.categories.includes(cat) ? "border-blue-500 text-blue-600 bg-blue-50" : "border-gray-200 text-gray-600 hover:border-blue-400"}`}>
                     {cat}
@@ -254,33 +286,59 @@ export default function RegisterPage() {
             </div>
 
             <div className="flex justify-end">
-              <button onClick={() => setStep(2)} className="px-8 py-3 bg-blue-600 text-white font-bold rounded-full hover:bg-blue-700 transition-all shadow-md text-sm">다음 단계 →</button>
+              <button onClick={() => setStep(2)}
+                className="px-8 py-3 bg-blue-600 text-white font-bold rounded-full hover:bg-blue-700 transition-all shadow-md text-sm">
+                다음 단계 →
+              </button>
             </div>
           </div>
         )}
 
+        {/* STEP 2 */}
         {step === 2 && (
           <div className="flex flex-col gap-5">
             <div className="bg-white rounded-2xl border border-gray-200 p-5 md:p-6">
               <h2 className="text-base font-extrabold text-gray-900 mb-1">🤖 Agent 설정</h2>
-              <p className="text-xs text-gray-400 mb-5">HTML 파일을 업로드하면 자동으로 처리돼요!</p>
+              <p className="text-xs text-gray-400 mb-5">HTML 파일을 업로드하면 설정이 자동으로 추출돼요!</p>
 
+              {/* 파일 업로드 */}
               <div className="mb-5">
-                <label className="block text-xs font-bold text-gray-700 mb-1.5">🚀 HTML Agent 파일 업로드</label>
+                <label className="block text-xs font-bold text-gray-700 mb-1.5">🚀 HTML Agent 파일 업로드 (자동 추출)</label>
                 <div
-                  className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${htmlFile ? "border-blue-400 bg-blue-50" : "border-gray-200 hover:border-blue-400 hover:bg-blue-50"}`}
+                  className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
+                    uploadStatus === "done" ? "border-green-400 bg-green-50" :
+                    uploadStatus === "uploading" ? "border-blue-400 bg-blue-50" :
+                    uploadStatus === "error" ? "border-red-400 bg-red-50" :
+                    "border-gray-200 hover:border-blue-400 hover:bg-blue-50"
+                  }`}
                   onClick={() => document.getElementById("htmlFileInput")?.click()}
                 >
-                  {htmlFile ? (
+                  {uploadStatus === "uploading" && (
+                    <div>
+                      <div className="text-2xl mb-2">⏳</div>
+                      <p className="text-sm font-bold text-blue-600">{htmlFile?.name}</p>
+                      <p className="text-xs text-gray-400 mt-1">업로드 중...</p>
+                    </div>
+                  )}
+                  {uploadStatus === "done" && (
                     <div>
                       <div className="text-2xl mb-2">✅</div>
-                      <p className="text-sm font-bold text-blue-600">{htmlFile.name}</p>
-                      <p className="text-xs text-gray-400 mt-1">
-                        {htmlUrl ? "✅ Storage 업로드 완료!" : "⏳ 업로드 중..."}
-                      </p>
-                      {systemPrompt && <p className="text-xs text-green-500 mt-1">✅ 시스템 프롬프트 자동 추출됨</p>}
+                      <p className="text-sm font-bold text-green-600">{htmlFile?.name}</p>
+                      <p className="text-xs text-gray-400 mt-1">업로드 완료!</p>
+                      {systemPrompt
+                        ? <p className="text-xs text-green-500 mt-1">✅ 시스템 프롬프트 자동 추출됨</p>
+                        : <p className="text-xs text-gray-400 mt-1">아래에서 시스템 프롬프트를 직접 입력해주세요</p>
+                      }
                     </div>
-                  ) : (
+                  )}
+                  {uploadStatus === "error" && (
+                    <div>
+                      <div className="text-2xl mb-2">❌</div>
+                      <p className="text-sm font-bold text-red-500">업로드 실패</p>
+                      <p className="text-xs text-gray-400 mt-1">다시 시도해주세요</p>
+                    </div>
+                  )}
+                  {uploadStatus === "idle" && (
                     <div>
                       <div className="text-3xl mb-2">📁</div>
                       <p className="text-sm font-semibold text-gray-600">HTML 파일을 클릭해서 업로드하세요</p>
@@ -294,38 +352,52 @@ export default function RegisterPage() {
               <div className="flex flex-col gap-4">
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1.5">Agent 이름 <span className="text-orange-500">*</span></label>
-                  <input type="text" placeholder="예: 계약서 리뷰 Agent" maxLength={40} value={form.agentName} onChange={e => update("agentName", e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-500 bg-gray-50" />
+                  <input type="text" placeholder="예: 계약서 리뷰 Agent" maxLength={40} value={form.agentName} onChange={e => update("agentName", e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-500 bg-gray-50" />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1.5">한 줄 설명 <span className="text-orange-500">*</span></label>
-                  <input type="text" placeholder="예: 계약서를 업로드하면 위험 조항을 즉시 분석합니다" maxLength={80} value={form.agentDesc} onChange={e => update("agentDesc", e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-500 bg-gray-50" />
+                  <input type="text" placeholder="예: 계약서를 업로드하면 위험 조항을 즉시 분석합니다" maxLength={80} value={form.agentDesc} onChange={e => update("agentDesc", e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-500 bg-gray-50" />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1.5">상세 설명</label>
-                  <textarea rows={3} placeholder="Agent가 어떤 문제를 해결하는지 작성해주세요." value={form.agentLongDesc} onChange={e => update("agentLongDesc", e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-500 bg-gray-50 resize-none"></textarea>
+                  <textarea rows={3} placeholder="Agent가 어떤 문제를 해결하는지 작성해주세요." value={form.agentLongDesc} onChange={e => update("agentLongDesc", e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-500 bg-gray-50 resize-none" />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1.5">
                     시스템 프롬프트
                     {systemPrompt && <span className="ml-2 text-green-500 text-xs">✅ 자동 추출됨</span>}
                   </label>
-                  <textarea rows={5} placeholder="HTML 파일 업로드 시 자동으로 채워져요. 직접 입력도 가능해요." value={systemPrompt} onChange={e => setSystemPrompt(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-500 bg-gray-50 resize-none font-mono"></textarea>
+                  <textarea rows={5}
+                    placeholder="HTML 파일 업로드 시 자동으로 채워져요. 직접 입력도 가능해요."
+                    value={systemPrompt} onChange={e => setSystemPrompt(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-500 bg-gray-50 resize-none font-mono" />
                   <p className="text-xs text-gray-400 mt-1">구매자에게는 보이지 않습니다.</p>
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1.5">맛보기 예시 질문</label>
-                  <input type="text" placeholder="예: 이 계약서의 불리한 조항을 찾아줘" value={form.sampleQuestion} onChange={e => update("sampleQuestion", e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-500 bg-gray-50" />
+                  <input type="text" placeholder="예: 이 계약서의 불리한 조항을 찾아줘" value={form.sampleQuestion} onChange={e => update("sampleQuestion", e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-500 bg-gray-50" />
                 </div>
               </div>
             </div>
 
             <div className="flex justify-between">
-              <button onClick={() => setStep(1)} className="px-8 py-3 border border-gray-200 text-gray-600 font-bold rounded-full hover:border-blue-400 hover:text-blue-600 transition-all text-sm">← 이전</button>
-              <button onClick={() => setStep(3)} className="px-8 py-3 bg-blue-600 text-white font-bold rounded-full hover:bg-blue-700 transition-all shadow-md text-sm">다음 단계 →</button>
+              <button onClick={() => setStep(1)}
+                className="px-8 py-3 border border-gray-200 text-gray-600 font-bold rounded-full hover:border-blue-400 hover:text-blue-600 transition-all text-sm">
+                ← 이전
+              </button>
+              <button onClick={() => setStep(3)}
+                className="px-8 py-3 bg-blue-600 text-white font-bold rounded-full hover:bg-blue-700 transition-all shadow-md text-sm">
+                다음 단계 →
+              </button>
             </div>
           </div>
         )}
 
+        {/* STEP 3 */}
         {step === 3 && (
           <div className="flex flex-col gap-5">
             <div className="bg-white rounded-2xl border border-gray-200 p-5 md:p-6">
@@ -333,16 +405,19 @@ export default function RegisterPage() {
               <div className="flex flex-col md:flex-row gap-3 mb-4">
                 <div className="flex-1">
                   <label className="block text-xs font-bold text-gray-700 mb-1.5">베이직 플랜 (월, 원) <span className="text-orange-500">*</span></label>
-                  <input type="number" placeholder="예: 89000" value={form.basicPrice} onChange={e => update("basicPrice", e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-500 bg-gray-50" />
+                  <input type="number" placeholder="예: 89000" value={form.basicPrice} onChange={e => update("basicPrice", e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-500 bg-gray-50" />
                 </div>
                 <div className="flex-1">
                   <label className="block text-xs font-bold text-gray-700 mb-1.5">프로 플랜 (월, 원)</label>
-                  <input type="number" placeholder="예: 180000" value={form.proPrice} onChange={e => update("proPrice", e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-500 bg-gray-50" />
+                  <input type="number" placeholder="예: 180000" value={form.proPrice} onChange={e => update("proPrice", e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-500 bg-gray-50" />
                 </div>
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1.5">맛보기 체험 횟수</label>
-                <select value={form.trialCount} onChange={e => update("trialCount", e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-500 bg-gray-50">
+                <select value={form.trialCount} onChange={e => update("trialCount", e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-500 bg-gray-50">
                   <option value="3">3회 무료 체험</option>
                   <option value="5">5회 무료 체험</option>
                   <option value="10">10회 무료 체험</option>
@@ -350,6 +425,7 @@ export default function RegisterPage() {
               </div>
             </div>
 
+            {/* 체크리스트 */}
             <div className="bg-gradient-to-br from-blue-50 to-orange-50 rounded-2xl border border-blue-100 p-5">
               <h3 className="text-sm font-extrabold text-gray-900 mb-3">📋 등록 전 체크리스트</h3>
               {[
@@ -357,7 +433,7 @@ export default function RegisterPage() {
                 { label: "Agent 이름과 설명을 입력했나요?", done: !!(form.agentName && form.agentDesc) },
                 { label: "HTML 파일을 업로드했나요?", done: !!htmlUrl },
                 { label: "가격을 설정했나요?", done: !!form.basicPrice },
-              ].map((item) => (
+              ].map(item => (
                 <div key={item.label} className="flex items-center gap-2 text-sm mb-2">
                   <span>{item.done ? "✅" : "⬜"}</span> {item.label}
                 </div>
@@ -365,7 +441,10 @@ export default function RegisterPage() {
             </div>
 
             <div className="flex justify-between">
-              <button onClick={() => setStep(2)} className="px-8 py-3 border border-gray-200 text-gray-600 font-bold rounded-full hover:border-blue-400 hover:text-blue-600 transition-all text-sm">← 이전</button>
+              <button onClick={() => setStep(2)}
+                className="px-8 py-3 border border-gray-200 text-gray-600 font-bold rounded-full hover:border-blue-400 hover:text-blue-600 transition-all text-sm">
+                ← 이전
+              </button>
               <button onClick={handleSubmit} disabled={loading}
                 className="px-8 py-3 bg-blue-600 text-white font-bold rounded-full hover:bg-blue-700 transition-all shadow-md text-sm disabled:opacity-50">
                 {loading ? "등록 중..." : "등록 신청하기 🎉"}
