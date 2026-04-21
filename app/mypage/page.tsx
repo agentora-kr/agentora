@@ -25,6 +25,7 @@ export default function MyPage() {
   const supabase = createClient();
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [subLoading, setSubLoading] = useState(true);
+  const [role, setRole] = useState("buyer");
 
   useEffect(() => {
     if (!loading && !user) {
@@ -33,13 +34,14 @@ export default function MyPage() {
   }, [user, loading]);
 
   useEffect(() => {
-    const fetchSubscriptions = async () => {
+    const fetchData = async () => {
       if (!user) {
         setSubLoading(false);
         return;
       }
 
-      const { data, error } = await supabase
+      // 구독 목록 조회
+      const { data: subData, error: subError } = await supabase
         .from("subscriptions")
         .select(`
           id,
@@ -57,15 +59,27 @@ export default function MyPage() {
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
-      if (error) {
-        console.error("구독 조회 에러:", error);
+      if (subError) {
+        console.error("구독 조회 에러:", subError);
       } else {
-        setSubscriptions((data as unknown as Subscription[]) || []);
+        setSubscriptions((subData as unknown as Subscription[]) || []);
       }
+
+      // role 조회
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+
+      if (profileData?.role) {
+        setRole(profileData.role);
+      }
+
       setSubLoading(false);
     };
 
-    fetchSubscriptions();
+    fetchData();
   }, [user]);
 
   const handleLogout = async () => {
@@ -89,6 +103,12 @@ export default function MyPage() {
   const displayName = (user as any)?.user_metadata?.name || user?.email?.split("@")[0] || "사용자";
   const displayCompany = (user as any)?.user_metadata?.company || "";
 
+  const roleLabel = () => {
+    if (role === "expert") return { text: "전문가 회원", color: "bg-orange-500" };
+    if (role === "admin") return { text: "관리자", color: "bg-purple-500" };
+    return { text: "기업 회원", color: "bg-white/15" };
+  };
+
   const statusLabel = (status: string) => {
     if (status === "active") return { text: "이용 중", color: "bg-green-100 text-green-600" };
     if (status === "pending") return { text: "결제 대기", color: "bg-yellow-100 text-yellow-600" };
@@ -98,7 +118,6 @@ export default function MyPage() {
 
   return (
     <main className="min-h-screen bg-gray-50">
-      {/* 네비게이션 */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-100 h-16 flex items-center justify-between px-5 md:px-10">
         <Link href="/" className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-orange-500 flex items-center justify-center text-sm">🤖</div>
@@ -109,7 +128,6 @@ export default function MyPage() {
         </button>
       </nav>
 
-      {/* 프로필 헤더 */}
       <div className="pt-16 bg-gradient-to-br from-gray-900 to-blue-900 px-5 md:px-10 py-8 md:py-10">
         <div className="max-w-5xl mx-auto flex items-center gap-4 md:gap-5">
           <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-white/20 flex items-center justify-center text-2xl md:text-3xl border-2 border-white/30 flex-shrink-0">👤</div>
@@ -117,7 +135,9 @@ export default function MyPage() {
             <h1 className="text-lg md:text-xl font-extrabold text-white mb-1">{displayName} 님, 안녕하세요! 👋</h1>
             <p className="text-sm text-gray-400">{displayCompany && `${displayCompany} · `}{user?.email}</p>
             <div className="flex gap-2 mt-2 flex-wrap">
-              <span className="text-xs font-bold px-3 py-1 rounded-full bg-white/15 text-white">기업 회원</span>
+              <span className={`text-xs font-bold px-3 py-1 rounded-full text-white ${roleLabel().color}`}>
+                {roleLabel().text}
+              </span>
               <span className="text-xs font-bold px-3 py-1 rounded-full bg-green-500 text-white">가입 완료</span>
             </div>
           </div>
@@ -136,13 +156,9 @@ export default function MyPage() {
         </div>
       </div>
 
-      {/* 메인 */}
       <div className="max-w-5xl mx-auto px-5 md:px-10 py-8 flex flex-col gap-6">
-
-        {/* 구독 목록 */}
         <div className="bg-white rounded-2xl border border-gray-200 p-5 md:p-6">
           <h2 className="text-base font-extrabold text-gray-900 mb-5">🤖 내 구독 Agent</h2>
-
           {subscriptions.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <div className="text-5xl mb-4">📭</div>
@@ -181,7 +197,6 @@ export default function MyPage() {
           )}
         </div>
 
-        {/* 준비 중 기능 */}
         <div className="bg-white rounded-2xl border border-gray-200 p-5 md:p-6">
           <h2 className="text-base font-extrabold text-gray-900 mb-4">🔜 준비 중인 기능</h2>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -202,7 +217,6 @@ export default function MyPage() {
             ))}
           </div>
         </div>
-
       </div>
     </main>
   );

@@ -57,8 +57,7 @@ export default function RegisterPage() {
 
     for (const pattern of patterns) {
       const match = html.match(pattern);
-      if (match && match[1] && match[1].trim().length > 30) return match[1].trim();
-    }
+if (match !== null && match[1] !== undefined && match[1].trim().length > 30) return match[1].trim();    }
     return "";
   };
 
