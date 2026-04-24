@@ -6,6 +6,28 @@ import { createClient } from "@/lib/supabase";
 
 const categories = ["전체", "데이터 분석", "고객 응대", "문서 자동화", "영업·마케팅", "법률·계약", "재무·회계", "제조·품질", "IT·개발"];
 
+// ✅ 카테고리별 이모지 자동 매핑
+const CATEGORY_EMOJI: Record<string, string> = {
+  "데이터 분석": "📊",
+  "고객 응대": "📞",
+  "문서 자동화": "📝",
+  "영업·마케팅": "💼",
+  "법률·계약": "⚖️",
+  "재무·회계": "💰",
+  "제조·품질": "🏗️",
+  "IT·개발": "🔧",
+  "의료·헬스": "🏥",
+  "교육·HR": "🎓",
+};
+
+function getAgentEmoji(emoji: string, category: string): string {
+  // DB에 저장된 emoji가 기본값(🤖)이거나 비어있으면 카테고리 이모지 사용
+  if (!emoji || emoji === "🤖") {
+    return CATEGORY_EMOJI[category] || "🤖";
+  }
+  return emoji;
+}
+
 type Agent = {
   id: number;
   name: string;
@@ -46,7 +68,7 @@ export default function AgentsPage() {
 
   return (
     <main className="min-h-screen bg-gray-50">
-     
+
       {menuOpen && (
         <div className="fixed top-16 left-0 right-0 z-40 bg-white border-b border-gray-100 shadow-lg md:hidden">
           <div className="flex flex-col p-4 gap-4">
@@ -73,7 +95,7 @@ export default function AgentsPage() {
       )}
 
       {/* 헤더 */}
-      <div className="pt-16 bg-gradient-to-br from-gray-900 to-blue-900 px-5 md:px-10 pb-0">
+      <div className="bg-gradient-to-br from-gray-900 to-blue-900 px-5 md:px-10 pb-0">
         <div className="max-w-5xl mx-auto pt-8 md:pt-10 pb-0">
           <div className="text-xs text-gray-400 mb-3">
             <Link href="/" className="hover:text-white transition-colors">홈</Link> › 전체 Agent
@@ -132,8 +154,9 @@ export default function AgentsPage() {
                     </span>
                   )}
                   <div className="p-4 flex gap-3 items-start">
+                    {/* ✅ 카테고리별 자동 이모지 매핑 적용 */}
                     <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-2xl flex-shrink-0">
-                      {agent.emoji}
+                      {getAgentEmoji(agent.emoji, agent.category)}
                     </div>
                     <div>
                       <div className="text-sm font-bold text-gray-900">{agent.name}</div>
