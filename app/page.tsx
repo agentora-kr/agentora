@@ -24,13 +24,11 @@ export default function Home() {
     <main className="min-h-screen bg-gray-50">
       {showPopup && <ComingSoonPopup onClose={() => setShowPopup(false)} />}
 
-      {/* 네비게이션 */}
-      
       {/* 히어로 섹션 */}
-      <div className="pt-16 bg-gradient-to-br from-gray-900 via-blue-950 to-gray-900 px-5 md:px-10 py-20 md:py-32 text-center">
+      <div className="bg-gradient-to-br from-gray-900 via-blue-950 to-gray-900 px-5 md:px-10 py-20 md:py-32 text-center">
         <div className="max-w-3xl mx-auto">
           <div className="inline-block bg-orange-500/10 text-orange-400 text-xs font-bold px-4 py-1.5 rounded-full mb-6 border border-orange-500/20">
-            🇰🇷 한국 최초 AI Agent B2B 마켓플레이스
+            국내 최초 AI Agent B2B 마켓플레이스
           </div>
           <h1 className="text-3xl md:text-5xl font-extrabold text-white leading-tight mb-6">
             전문가의 지식을<br />
@@ -99,17 +97,8 @@ export default function Home() {
 
       {/* 푸터 */}
       <footer className="bg-gray-900 px-5 md:px-10 py-10 text-center">
-        <div className="flex items-center justify-center gap-2 mb-4">
-          {/* 푸터 */}
-<footer className="bg-gray-900 px-5 md:px-10 py-10 text-center">
-  <div className="flex items-center justify-center gap-2 mb-4">
-    <span className="text-white font-extrabold">Agentora</span>
-  </div>
-  <p className="text-gray-500 text-xs">© 2025 Agentora. All rights reserved.</p>
-</footer>
-          <span className="text-white font-extrabold">Agentora</span>
-        </div>
-        <p className="text-gray-500 text-xs">© 2025 Agentora. All rights reserved.</p>
+        <span className="text-white font-extrabold text-lg">Agentora</span>
+        <p className="text-gray-500 text-xs mt-3">© 2026 Agentora. All rights reserved.</p>
       </footer>
     </main>
   );
