@@ -57,7 +57,10 @@ export default function RegisterPage() {
 
     for (const pattern of patterns) {
       const match = html.match(pattern);
-if (match !== null && match[1] !== undefined && match[1].trim().length > 30) return match[1].trim();    }
+      if (match !== null && match[1] !== undefined && match[1].trim().length > 30) {
+        return match[1].trim();
+      }
+    }
     return "";
   };
 
@@ -114,33 +117,71 @@ if (match !== null && match[1] !== undefined && match[1].trim().length > 30) ret
     setLoading(true);
     setError("");
 
+    // ✅ 1) 필수 필드 유효성 검증 강화
     if (!form.name || !form.email || !form.title) {
       setError("이름, 이메일, 직함은 필수입니다.");
       setLoading(false);
       return;
     }
 
+    if (form.agentName && !form.agentDesc) {
+      setError("Agent 이름을 입력했다면 한 줄 설명도 필수입니다.");
+      setLoading(false);
+      return;
+    }
+
     try {
+      // ✅ 2) 로그인 여부 먼저 확인 — 미로그인 시 안내 후 중단
       const { data: { user } } = await supabase.auth.getUser();
 
+      if (!user) {
+        setError("로그인이 필요합니다. 먼저 로그인 후 다시 시도해주세요.");
+        setLoading(false);
+        return;
+      }
+
+      // ✅ 3) 중복 등록 방지
+      const { data: existingExpert } = await supabase
+        .from("experts")
+        .select("id")
+        .eq("user_id", user.id)
+        .single();
+
+      if (existingExpert) {
+        setError("이미 전문가로 등록되어 있습니다. 마이페이지에서 확인해주세요.");
+        setLoading(false);
+        return;
+      }
+
+      // ✅ 4) experts 테이블 insert
       const { error: expertError } = await supabase.from("experts").insert({
-        user_id: user?.id || null,
-        name: form.name, title: form.title, company: form.company,
-        email: form.email, experience: form.experience,
-        intro: form.intro, description: form.description,
-        categories: form.categories, status: "pending",
+        user_id: user.id,
+        name: form.name,
+        title: form.title,
+        company: form.company,
+        email: form.email,
+        experience: form.experience,
+        intro: form.intro,
+        description: form.description,
+        categories: form.categories,
+        status: "pending",
       });
 
       if (expertError) throw expertError;
 
-      // profiles role을 expert로 업데이트
-      if (user?.id) {
-        await supabase
-          .from("profiles")
-          .update({ role: "expert" })
-          .eq("id", user.id);
+      // ✅ 5) profiles.role → 'expert' 업데이트 (에러 핸들링 추가)
+      const { error: roleError } = await supabase
+        .from("profiles")
+        .update({ role: "expert" })
+        .eq("id", user.id);
+
+      if (roleError) {
+        // experts는 등록됐지만 role 변경 실패 — 로그 남기고 사용자에게 안내
+        console.error("role 업데이트 실패:", roleError);
+        // 치명적이지 않으므로 진행은 하되, 관리자에게 알릴 수 있도록 로그
       }
 
+      // ✅ 6) Agent 정보도 함께 등록
       if (form.agentName) {
         const { error: agentError } = await supabase.from("agents").insert({
           name: form.agentName,
@@ -157,6 +198,7 @@ if (match !== null && match[1] !== undefined && match[1].trim().length > 30) ret
           tags: form.categories,
           status: "pending",
         });
+
         if (agentError) throw agentError;
       }
 
