@@ -46,34 +46,7 @@ export default function AgentsPage() {
 
   return (
     <main className="min-h-screen bg-gray-50">
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-100 h-16 flex items-center justify-between px-5 md:px-10">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-orange-500 flex items-center justify-center text-sm">🤖</div>
-          <span className="text-xl font-extrabold text-gray-900">Agentora</span>
-        </Link>
-        <div className="hidden md:flex items-center gap-6">
-          <Link href="/agents" className="text-sm font-bold text-blue-600">전체 Agent</Link>
-          <Link href="/register" className="text-sm font-medium text-gray-500 hover:text-blue-600">전문가 등록</Link>
-        </div>
-        <div className="hidden md:flex gap-3">
-          {user ? (
-            <Link href="/mypage">
-              <button className="px-5 py-2 rounded-full text-sm font-semibold border border-gray-200 text-gray-600 hover:border-blue-500 hover:text-blue-600 transition-all">마이페이지</button>
-            </Link>
-          ) : (
-            <>
-              <Link href="/login"><button className="px-5 py-2 rounded-full text-sm font-semibold border border-gray-200 text-gray-600 hover:border-blue-500 hover:text-blue-600 transition-all">로그인</button></Link>
-              <Link href="/login"><button className="px-5 py-2 rounded-full text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-all shadow-md">무료 시작</button></Link>
-            </>
-          )}
-        </div>
-        <button className="md:hidden flex flex-col gap-1.5 p-2" onClick={() => setMenuOpen(!menuOpen)}>
-          <span className={`block w-6 h-0.5 bg-gray-700 transition-all ${menuOpen ? "rotate-45 translate-y-2" : ""}`}></span>
-          <span className={`block w-6 h-0.5 bg-gray-700 transition-all ${menuOpen ? "opacity-0" : ""}`}></span>
-          <span className={`block w-6 h-0.5 bg-gray-700 transition-all ${menuOpen ? "-rotate-45 -translate-y-2" : ""}`}></span>
-        </button>
-      </nav>
-
+     
       {menuOpen && (
         <div className="fixed top-16 left-0 right-0 z-40 bg-white border-b border-gray-100 shadow-lg md:hidden">
           <div className="flex flex-col p-4 gap-4">

@@ -233,13 +233,7 @@ export default function RegisterPage() {
   return (
     <main className="min-h-screen bg-gray-50">
       {/* 네비게이션 */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-100 h-16 flex items-center justify-between px-5 md:px-10">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-orange-500 flex items-center justify-center text-sm">🤖</div>
-          <span className="text-xl font-extrabold text-gray-900">Agentora</span>
-        </Link>
-      </nav>
-
+      
       {/* 헤더 */}
       <div className="pt-16 bg-gradient-to-br from-gray-900 to-blue-900 px-5 md:px-10 py-8 md:py-10">
         <div className="max-w-3xl mx-auto">
