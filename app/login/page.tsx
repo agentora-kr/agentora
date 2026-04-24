@@ -14,6 +14,7 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [signupDone, setSignupDone] = useState(false);
   const [signupRole, setSignupRole] = useState<"buyer" | "expert">("buyer");
+  const [needsEmailConfirm, setNeedsEmailConfirm] = useState(false);
   const supabase = createClient();
 
   const handleLogin = async () => {
@@ -34,6 +35,7 @@ export default function LoginPage() {
   const handleSignup = async () => {
     setLoading(true);
     setError("");
+
     if (!email || !password || !name) {
       setError("이름, 이메일, 비밀번호를 모두 입력해주세요.");
       setLoading(false);
@@ -44,19 +46,58 @@ export default function LoginPage() {
       setLoading(false);
       return;
     }
-    const { error } = await supabase.auth.signUp({
+
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { name, company, role }
-      }
+        data: { name, company, role },
+      },
     });
+
     if (error) {
-      setError("회원가입 중 오류가 발생했어요. 다시 시도해주세요.");
-    } else {
-      setSignupRole(role);
-      setSignupDone(true);
+      // ✅ 에러 원인별 구체적 메시지
+      const msg = error.message.toLowerCase();
+      if (msg.includes("already registered") || msg.includes("already been registered")) {
+        setError("이미 가입된 이메일이에요. 로그인을 시도해보세요!");
+      } else if (msg.includes("valid email")) {
+        setError("올바른 이메일 형식을 입력해주세요.");
+      } else if (msg.includes("password")) {
+        setError("비밀번호 조건을 확인해주세요. (8자 이상)");
+      } else if (msg.includes("rate") || msg.includes("limit")) {
+        setError("요청이 너무 많아요. 잠시 후 다시 시도해주세요.");
+      } else {
+        setError(`회원가입 중 오류가 발생했어요: ${error.message}`);
+      }
+      setLoading(false);
+      return;
     }
+
+    // ✅ 가입 성공 후 처리
+    const user = data.user;
+
+    if (user) {
+      // profiles 테이블에 role 저장 (trigger가 없는 경우 대비)
+      await supabase.from("profiles").upsert({
+        id: user.id,
+        name,
+        company,
+        email,
+        role,
+      }, { onConflict: "id" });
+
+      // ✅ 이메일 인증 필요 여부 판별
+      if (user.email_confirmed_at) {
+        // confirm email 꺼져있는 경우 → 바로 완료
+        setNeedsEmailConfirm(false);
+      } else {
+        // confirm email 켜져있는 경우 → 인증 대기
+        setNeedsEmailConfirm(true);
+      }
+    }
+
+    setSignupRole(role);
+    setSignupDone(true);
     setLoading(false);
   };
 
@@ -72,37 +113,69 @@ export default function LoginPage() {
         </nav>
         <div className="flex-1 flex items-center justify-center p-6">
           <div className="bg-white rounded-2xl p-10 shadow-xl max-w-md w-full text-center">
-            <div className="text-6xl mb-4">📧</div>
-            <h2 className="text-2xl font-extrabold text-gray-900 mb-3">이메일을 확인해주세요!</h2>
-            <p className="text-gray-500 text-sm leading-relaxed mb-2">
-              <strong>{email}</strong> 으로 인증 메일을 보냈어요.
-            </p>
-            <p className="text-gray-500 text-sm leading-relaxed mb-8">
-              이메일의 인증 링크를 클릭하면<br />가입이 완료됩니다 🎉
-            </p>
-            <div className="flex flex-col gap-3">
-              <button
-                onClick={() => { setSignupDone(false); setTab("login"); }}
-                className="w-full py-3 bg-blue-600 text-white font-bold rounded-full hover:bg-blue-700 transition-all shadow-md text-sm">
-                로그인 하러 가기
-              </button>
-              {signupRole === "expert" && (
-                <Link href="/register">
-                  <button className="w-full py-3 border-2 border-orange-400 text-orange-500 font-bold rounded-full hover:bg-orange-50 transition-all text-sm">
-                    🧑‍💼 Agent 등록하기
+            {needsEmailConfirm ? (
+              <>
+                {/* 이메일 인증이 필요한 경우 */}
+                <div className="text-6xl mb-4">📧</div>
+                <h2 className="text-2xl font-extrabold text-gray-900 mb-3">이메일을 확인해주세요!</h2>
+                <p className="text-gray-500 text-sm leading-relaxed mb-2">
+                  <strong>{email}</strong> 으로 인증 메일을 보냈어요.
+                </p>
+                <p className="text-gray-500 text-sm leading-relaxed mb-8">
+                  이메일의 인증 링크를 클릭하면<br />가입이 완료됩니다 🎉
+                </p>
+                <div className="flex flex-col gap-3">
+                  <button
+                    onClick={() => { setSignupDone(false); setTab("login"); }}
+                    className="w-full py-3 bg-blue-600 text-white font-bold rounded-full hover:bg-blue-700 transition-all shadow-md text-sm">
+                    로그인 하러 가기
                   </button>
-                </Link>
-              )}
-              <Link href="/">
-                <button className="w-full py-3 border border-gray-200 text-gray-500 font-bold rounded-full hover:bg-gray-50 transition-all text-sm">
-                  홈으로 돌아가기
-                </button>
-              </Link>
-            </div>
-            <p className="text-xs text-gray-400 mt-6">
-              메일이 안 왔나요? 스팸함을 확인하거나<br />
-              <button onClick={handleSignup} className="text-blue-500 underline">재발송하기</button>
-            </p>
+                  <Link href="/">
+                    <button className="w-full py-3 border border-gray-200 text-gray-500 font-bold rounded-full hover:bg-gray-50 transition-all text-sm">
+                      홈으로 돌아가기
+                    </button>
+                  </Link>
+                </div>
+                <p className="text-xs text-gray-400 mt-6">
+                  메일이 안 왔나요? 스팸함을 확인하거나{" "}
+                  <button onClick={handleSignup} className="text-blue-500 underline">재발송하기</button>
+                </p>
+              </>
+            ) : (
+              <>
+                {/* 이메일 인증 없이 바로 가입 완료된 경우 */}
+                <div className="text-6xl mb-4">🎉</div>
+                <h2 className="text-2xl font-extrabold text-gray-900 mb-3">가입 완료!</h2>
+                <p className="text-gray-500 text-sm leading-relaxed mb-2">
+                  <strong>{email}</strong> 으로 가입되었어요.
+                </p>
+                <p className="text-gray-500 text-sm leading-relaxed mb-8">
+                  {signupRole === "expert"
+                    ? "이제 Agent를 등록하고 판매를 시작하세요! 🚀"
+                    : "이제 AI Agent를 탐색하고 체험해보세요! 🤖"}
+                </p>
+                <div className="flex flex-col gap-3">
+                  {signupRole === "expert" ? (
+                    <Link href="/register">
+                      <button className="w-full py-3 bg-orange-500 text-white font-bold rounded-full hover:bg-orange-600 transition-all shadow-md text-sm">
+                        🧑‍💼 Agent 등록하러 가기
+                      </button>
+                    </Link>
+                  ) : (
+                    <Link href="/agents">
+                      <button className="w-full py-3 bg-blue-600 text-white font-bold rounded-full hover:bg-blue-700 transition-all shadow-md text-sm">
+                        🤖 Agent 탐색하기
+                      </button>
+                    </Link>
+                  )}
+                  <Link href="/mypage">
+                    <button className="w-full py-3 border border-gray-200 text-gray-600 font-bold rounded-full hover:bg-gray-50 transition-all text-sm">
+                      마이페이지로 가기
+                    </button>
+                  </Link>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </main>
