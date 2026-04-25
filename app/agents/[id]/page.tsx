@@ -19,6 +19,7 @@ type Agent = {
   category: string;
   price: number;
   author_name: string;
+  expert_email: string;
   emoji: string;
   tags: string[];
   badge: string | null;
@@ -27,29 +28,22 @@ type Agent = {
   html_url: string | null;
 };
 
-// ✅ iframe HTML에 fetch 오버라이드 스크립트를 주입
 function injectTrialScript(html: string): string {
   const script = `
 <script>
 (function() {
   const originalFetch = window.fetch;
   window.fetch = function(url, options) {
-    // API 호출 감지 (anthropic API 또는 chat-proxy)
     const urlStr = typeof url === 'string' ? url : url.toString();
     if (urlStr.includes('anthropic.com') || urlStr.includes('/api/chat') || urlStr.includes('/api/chat-proxy')) {
-      // 부모에게 체험 횟수 차감 요청
       window.parent.postMessage({ type: 'AGENTORA_API_CALL' }, '*');
-
-      // 부모의 응답을 기다리는 Promise
       return new Promise((resolve, reject) => {
         function handler(event) {
           if (event.data && event.data.type === 'AGENTORA_TRIAL_RESPONSE') {
             window.removeEventListener('message', handler);
             if (event.data.allowed) {
-              // 허용 → 원래 fetch 실행
               originalFetch(url, options).then(resolve).catch(reject);
             } else {
-              // 차단 → 에러 응답
               resolve(new Response(JSON.stringify({
                 error: { message: '무료 체험 횟수를 모두 사용했습니다. 구독 후 계속 사용해주세요.' }
               }), { status: 403, headers: { 'Content-Type': 'application/json' } }));
@@ -57,31 +51,27 @@ function injectTrialScript(html: string): string {
           }
         }
         window.addEventListener('message', handler);
-
-        // 5초 타임아웃
         setTimeout(() => {
           window.removeEventListener('message', handler);
           originalFetch(url, options).then(resolve).catch(reject);
         }, 5000);
       });
     }
-    // API가 아닌 일반 fetch는 그대로 통과
     return originalFetch(url, options);
   };
 })();
 </script>`;
 
-  // <head> 바로 뒤에 스크립트 주입
   if (html.includes('<head>')) {
     return html.replace('<head>', '<head>' + script);
   }
-  // <head>가 없으면 맨 앞에 주입
   return script + html;
 }
 
 export default function AgentDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = React.use(params);
   const [agent, setAgent] = useState<Agent | null>(null);
+  const [expertId, setExpertId] = useState<number | null>(null); // ✅ 전문가 ID
   const [loading, setLoading] = useState(true);
   const [htmlContent, setHtmlContent] = useState("");
   const [messages, setMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
@@ -99,7 +89,16 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
       if (!error && data) {
         setAgent(data);
 
-        // localStorage에서 체험 횟수 불러오기
+        // ✅ expert_email로 experts 테이블에서 전문가 id 조회
+        if (data.expert_email) {
+          const { data: expertData } = await supabase
+            .from("experts")
+            .select("id")
+            .eq("email", data.expert_email)
+            .single();
+          if (expertData) setExpertId(expertData.id);
+        }
+
         const savedTrial = localStorage.getItem(getTrialKey(id));
         const currentTrial = savedTrial !== null ? parseInt(savedTrial) : 3;
         setTrial(currentTrial);
@@ -108,7 +107,6 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
           try {
             const res = await fetch(data.html_url);
             const html = await res.text();
-            // ✅ 체험 스크립트 주입
             setHtmlContent(injectTrialScript(html));
           } catch (e) {
             console.error("HTML 로드 실패:", e);
@@ -125,7 +123,6 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
     fetchAgent();
   }, [id]);
 
-  // ✅ iframe으로부터 API 호출 메시지 수신 → 횟수 차감 후 응답
   const handleIframeMessage = useCallback((event: MessageEvent) => {
     if (event.data?.type === 'AGENTORA_API_CALL') {
       const savedTrial = localStorage.getItem(getTrialKey(id));
@@ -135,12 +132,9 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
         const newTrial = currentTrial - 1;
         setTrial(newTrial);
         localStorage.setItem(getTrialKey(id), newTrial.toString());
-
-        // iframe에게 "허용" 응답
         const iframe = document.querySelector('iframe');
         iframe?.contentWindow?.postMessage({ type: 'AGENTORA_TRIAL_RESPONSE', allowed: true }, '*');
       } else {
-        // iframe에게 "차단" 응답
         const iframe = document.querySelector('iframe');
         iframe?.contentWindow?.postMessage({ type: 'AGENTORA_TRIAL_RESPONSE', allowed: false }, '*');
         setTrial(0);
@@ -234,7 +228,17 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
               <h1 className="text-xl md:text-2xl font-extrabold text-gray-900 mb-2">{agent.name}</h1>
               <p className="text-sm text-gray-500 leading-relaxed">{agent.description}</p>
               <div className="flex items-center gap-3 mt-2 text-sm text-gray-500">
-                <span>by <strong>{agent.author_name}</strong></span>
+                {/* ✅ 전문가 이름 클릭 시 프로필 페이지로 이동 */}
+                <span>
+                  by{" "}
+                  {expertId ? (
+                    <Link href={`/experts/${expertId}`}>
+                      <strong className="text-blue-600 hover:underline cursor-pointer">{agent.author_name}</strong>
+                    </Link>
+                  ) : (
+                    <strong>{agent.author_name}</strong>
+                  )}
+                </span>
                 {agent.rating > 0 && <span className="text-yellow-500 font-bold">⭐ {agent.rating}</span>}
               </div>
             </div>
@@ -401,6 +405,23 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
               </div>
             ))}
           </div>
+
+          {/* ✅ 전문가 프로필 바로가기 카드 */}
+          {expertId && (
+            <Link href={`/experts/${expertId}`}>
+              <div className="bg-white rounded-2xl border border-gray-200 p-4 hover:border-blue-300 hover:shadow-md transition-all cursor-pointer">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-lg flex-shrink-0">
+                    👤
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-gray-900">{agent.author_name}</p>
+                    <p className="text-xs text-blue-600 mt-0.5">프로필 · 리뷰 보기 →</p>
+                  </div>
+                </div>
+              </div>
+            </Link>
+          )}
         </div>
       </div>
     </main>
