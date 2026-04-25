@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase";
 import { useAuth } from "../../providers";
@@ -27,6 +27,58 @@ type Agent = {
   html_url: string | null;
 };
 
+// ✅ iframe HTML에 fetch 오버라이드 스크립트를 주입
+function injectTrialScript(html: string): string {
+  const script = `
+<script>
+(function() {
+  const originalFetch = window.fetch;
+  window.fetch = function(url, options) {
+    // API 호출 감지 (anthropic API 또는 chat-proxy)
+    const urlStr = typeof url === 'string' ? url : url.toString();
+    if (urlStr.includes('anthropic.com') || urlStr.includes('/api/chat') || urlStr.includes('/api/chat-proxy')) {
+      // 부모에게 체험 횟수 차감 요청
+      window.parent.postMessage({ type: 'AGENTORA_API_CALL' }, '*');
+
+      // 부모의 응답을 기다리는 Promise
+      return new Promise((resolve, reject) => {
+        function handler(event) {
+          if (event.data && event.data.type === 'AGENTORA_TRIAL_RESPONSE') {
+            window.removeEventListener('message', handler);
+            if (event.data.allowed) {
+              // 허용 → 원래 fetch 실행
+              originalFetch(url, options).then(resolve).catch(reject);
+            } else {
+              // 차단 → 에러 응답
+              resolve(new Response(JSON.stringify({
+                error: { message: '무료 체험 횟수를 모두 사용했습니다. 구독 후 계속 사용해주세요.' }
+              }), { status: 403, headers: { 'Content-Type': 'application/json' } }));
+            }
+          }
+        }
+        window.addEventListener('message', handler);
+
+        // 5초 타임아웃
+        setTimeout(() => {
+          window.removeEventListener('message', handler);
+          originalFetch(url, options).then(resolve).catch(reject);
+        }, 5000);
+      });
+    }
+    // API가 아닌 일반 fetch는 그대로 통과
+    return originalFetch(url, options);
+  };
+})();
+</script>`;
+
+  // <head> 바로 뒤에 스크립트 주입
+  if (html.includes('<head>')) {
+    return html.replace('<head>', '<head>' + script);
+  }
+  // <head>가 없으면 맨 앞에 주입
+  return script + html;
+}
+
 export default function AgentDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = React.use(params);
   const [agent, setAgent] = useState<Agent | null>(null);
@@ -36,11 +88,9 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
   const [input, setInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
   const [trial, setTrial] = useState(3);
-  const [iframeLoaded, setIframeLoaded] = useState(false);
   const { user } = useAuth();
   const supabase = createClient();
 
-  // ✅ localStorage에서 체험 횟수 불러오기 (Agent별로 관리)
   const getTrialKey = (agentId: string) => `agentora_trial_${agentId}`;
 
   useEffect(() => {
@@ -49,21 +99,19 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
       if (!error && data) {
         setAgent(data);
 
-        // 저장된 체험 횟수 불러오기
+        // localStorage에서 체험 횟수 불러오기
         const savedTrial = localStorage.getItem(getTrialKey(id));
         const currentTrial = savedTrial !== null ? parseInt(savedTrial) : 3;
         setTrial(currentTrial);
 
         if (data.html_url) {
-          // ✅ 체험 횟수가 남아있을 때만 HTML 로드
-          if (currentTrial > 0) {
-            try {
-              const res = await fetch(data.html_url);
-              const html = await res.text();
-              setHtmlContent(html);
-            } catch (e) {
-              console.error("HTML 로드 실패:", e);
-            }
+          try {
+            const res = await fetch(data.html_url);
+            const html = await res.text();
+            // ✅ 체험 스크립트 주입
+            setHtmlContent(injectTrialScript(html));
+          } catch (e) {
+            console.error("HTML 로드 실패:", e);
           }
         } else {
           setMessages([{
@@ -77,22 +125,39 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
     fetchAgent();
   }, [id]);
 
-  // ✅ iframe 로드 완료 시 체험 횟수 1회 차감
-  const handleIframeLoad = () => {
-    if (!iframeLoaded) {
-      setIframeLoaded(true);
-      const newTrial = Math.max(trial - 1, 0);
-      setTrial(newTrial);
-      localStorage.setItem(getTrialKey(id), newTrial.toString());
+  // ✅ iframe으로부터 API 호출 메시지 수신 → 횟수 차감 후 응답
+  const handleIframeMessage = useCallback((event: MessageEvent) => {
+    if (event.data?.type === 'AGENTORA_API_CALL') {
+      const savedTrial = localStorage.getItem(getTrialKey(id));
+      const currentTrial = savedTrial !== null ? parseInt(savedTrial) : 3;
+
+      if (currentTrial > 0) {
+        const newTrial = currentTrial - 1;
+        setTrial(newTrial);
+        localStorage.setItem(getTrialKey(id), newTrial.toString());
+
+        // iframe에게 "허용" 응답
+        const iframe = document.querySelector('iframe');
+        iframe?.contentWindow?.postMessage({ type: 'AGENTORA_TRIAL_RESPONSE', allowed: true }, '*');
+      } else {
+        // iframe에게 "차단" 응답
+        const iframe = document.querySelector('iframe');
+        iframe?.contentWindow?.postMessage({ type: 'AGENTORA_TRIAL_RESPONSE', allowed: false }, '*');
+        setTrial(0);
+      }
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    window.addEventListener('message', handleIframeMessage);
+    return () => window.removeEventListener('message', handleIframeMessage);
+  }, [handleIframeMessage]);
 
   const handleSend = async () => {
     if (!input.trim() || chatLoading || trial <= 0 || !agent) return;
     const userMsg = input.trim();
     setInput("");
 
-    // 채팅형 Agent도 체험 횟수 차감 + localStorage 저장
     const newTrial = Math.max(trial - 1, 0);
     setTrial(newTrial);
     localStorage.setItem(getTrialKey(id), newTrial.toString());
@@ -199,8 +264,7 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
                 </span>
               </div>
 
-              {/* ✅ 체험 횟수가 남아있으면 iframe, 없으면 구독 유도 */}
-              {trial > 0 || iframeLoaded ? (
+              {trial > 0 ? (
                 htmlContent ? (
                   <iframe
                     srcDoc={htmlContent}
@@ -208,7 +272,6 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
                     style={{ height: "700px", border: "none" }}
                     title={agent.name}
                     sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-                    onLoad={handleIframeLoad}
                   />
                 ) : (
                   <div className="flex items-center justify-center h-40">
@@ -216,7 +279,6 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
                   </div>
                 )
               ) : (
-                // ✅ 체험 횟수 소진 시 구독 유도 화면
                 <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
                   <div className="text-5xl mb-4">🔒</div>
                   <h3 className="text-lg font-extrabold text-gray-900 mb-2">무료 체험이 종료되었어요</h3>
@@ -266,8 +328,6 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
                     </div>
                   </div>
                 )}
-
-                {/* ✅ 채팅형도 체험 종료 시 메시지 표시 */}
                 {trial <= 0 && !chatLoading && (
                   <div className="text-center py-4">
                     <p className="text-sm text-gray-500 font-semibold mb-3">🔒 무료 체험이 종료되었어요</p>
