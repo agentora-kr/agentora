@@ -131,6 +131,16 @@ export default function MyPage() {
     return { text: status, color: "bg-gray-100 text-gray-500" };
   };
 
+  // ✅ 전문가 대시보드는 링크 활성화, 나머지는 준비 중
+  const featureItems = [
+    { icon: "💳", name: "결제 내역", desc: "구독 및 결제 관리", href: null },
+    { icon: "📊", name: "사용량 통계", desc: "Agent 사용 현황", href: null },
+    { icon: "🔔", name: "알림 센터", desc: "맞춤 알림 서비스", href: null },
+    { icon: "🧑‍💼", name: "전문가 대시보드", desc: "Agent 판매 관리", href: role === "expert" || role === "admin" ? "/expert/dashboard" : null },
+    { icon: "⚙️", name: "프로필 설정", desc: "계정 정보 관리", href: null },
+    { icon: "🏆", name: "리뷰 관리", desc: "Agent 평가 및 리뷰", href: null },
+  ];
+
   return (
     <main className="min-h-screen bg-gray-50">
 
@@ -180,7 +190,6 @@ export default function MyPage() {
                 const { text, color } = statusLabel(sub.status);
                 return (
                   <div key={sub.id} className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl border border-gray-100 hover:border-blue-200 transition-all">
-                    {/* ✅ 무조건 카테고리 이모지 사용 */}
                     <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-2xl flex-shrink-0">
                       {getEmoji(sub.agents?.category || "")}
                     </div>
@@ -207,21 +216,27 @@ export default function MyPage() {
         <div className="bg-white rounded-2xl border border-gray-200 p-5 md:p-6">
           <h2 className="text-base font-extrabold text-gray-900 mb-4">🔜 준비 중인 기능</h2>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {[
-              { icon: "💳", name: "결제 내역", desc: "구독 및 결제 관리" },
-              { icon: "📊", name: "사용량 통계", desc: "Agent 사용 현황" },
-              { icon: "🔔", name: "알림 센터", desc: "맞춤 알림 서비스" },
-              { icon: "🧑‍💼", name: "전문가 대시보드", desc: "Agent 판매 관리" },
-              { icon: "⚙️", name: "프로필 설정", desc: "계정 정보 관리" },
-              { icon: "🏆", name: "리뷰 관리", desc: "Agent 평가 및 리뷰" },
-            ].map((item) => (
-              <div key={item.name} className="bg-gray-50 rounded-xl border border-gray-100 p-4 flex flex-col items-center gap-2 opacity-60">
-                <span className="text-2xl">{item.icon}</span>
-                <span className="text-xs font-bold text-gray-700">{item.name}</span>
-                <span className="text-[10px] text-gray-400">{item.desc}</span>
-                <span className="text-[10px] text-gray-400 bg-gray-200 px-2 py-0.5 rounded-full">준비 중</span>
-              </div>
-            ))}
+            {featureItems.map((item) =>
+              item.href ? (
+                // ✅ 활성화된 메뉴 — 파란 테두리 + 바로가기
+                <Link href={item.href} key={item.name}>
+                  <div className="bg-blue-50 rounded-xl border border-blue-300 p-4 flex flex-col items-center gap-2 hover:border-blue-500 hover:shadow-md transition-all cursor-pointer">
+                    <span className="text-2xl">{item.icon}</span>
+                    <span className="text-xs font-bold text-gray-700">{item.name}</span>
+                    <span className="text-[10px] text-gray-400">{item.desc}</span>
+                    <span className="text-[10px] text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full font-semibold">바로가기 →</span>
+                  </div>
+                </Link>
+              ) : (
+                // 준비 중 메뉴
+                <div key={item.name} className="bg-gray-50 rounded-xl border border-gray-100 p-4 flex flex-col items-center gap-2 opacity-60">
+                  <span className="text-2xl">{item.icon}</span>
+                  <span className="text-xs font-bold text-gray-700">{item.name}</span>
+                  <span className="text-[10px] text-gray-400">{item.desc}</span>
+                  <span className="text-[10px] text-gray-400 bg-gray-200 px-2 py-0.5 rounded-full">준비 중</span>
+                </div>
+              )
+            )}
           </div>
         </div>
       </div>
