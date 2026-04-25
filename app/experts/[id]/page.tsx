@@ -69,11 +69,11 @@ export default function ExpertProfilePage({ params }: { params: Promise<{ id: st
       if (!expertData) { setLoading(false); return; }
       setExpert(expertData);
 
-      // 전문가의 Agent 목록
+      // ✅ user_id로 Agent 목록 조회
       const { data: agentData } = await supabase
         .from("agents")
         .select("*")
-        .eq("expert_email", expertData.email)
+        .eq("user_id", expertData.user_id)
         .eq("status", "approved");
 
       const agentList = agentData || [];
@@ -88,7 +88,6 @@ export default function ExpertProfilePage({ params }: { params: Promise<{ id: st
           .in("agent_id", agentIds)
           .order("created_at", { ascending: false });
 
-        // 리뷰에 agent 이름 붙이기
         const reviewsWithAgent = (reviewData || []).map((r) => {
           const agent = agentList.find((a) => a.id === r.agent_id);
           return {
@@ -250,7 +249,7 @@ export default function ExpertProfilePage({ params }: { params: Promise<{ id: st
                             <span key={star} className={`text-sm ${star <= review.rating ? "text-yellow-400" : "text-gray-200"}`}>★</span>
                           ))}
                         </div>
-                        {/* ✅ 어떤 Agent에 대한 리뷰인지 표시 */}
+                        {/* ✅ 어떤 Agent에 대한 리뷰인지 회색 작은 글씨로 표시 */}
                         <p className="text-[10px] text-gray-400 mt-0.5">
                           {getEmoji(review.agent_category || "")} {review.agent_name}
                         </p>

@@ -41,7 +41,6 @@ export default function RegisterPage() {
     }));
   };
 
-  // 시스템 프롬프트 추출 (패턴 강화)
   const extractSystemPrompt = (html: string): string => {
     const patterns = [
       /const\s+systemPrompt\s*=\s*`([\s\S]+?)`(?=\s*;|\s*\n)/,
@@ -54,7 +53,6 @@ export default function RegisterPage() {
       /`(당신은[\s\S]{50,}?)`/,
       /`(You are[\s\S]{50,}?)`/,
     ];
-
     for (const pattern of patterns) {
       const match = html.match(pattern);
       if (match !== null && match[1] !== undefined && match[1].trim().length > 30) {
@@ -67,7 +65,6 @@ export default function RegisterPage() {
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     setHtmlFile(file);
     setError("");
     setUploadStatus("uploading");
@@ -75,18 +72,14 @@ export default function RegisterPage() {
     const reader = new FileReader();
     reader.onload = async (ev) => {
       const content = ev.target?.result as string;
-
-      // 시스템 프롬프트 추출
       const extracted = extractSystemPrompt(content);
       setSystemPrompt(extracted);
 
-      // Agent 이름 자동 추출
       const titleMatch = content.match(/<title>(.*?)<\/title>/i);
       if (titleMatch?.[1] && !form.agentName) {
         update("agentName", titleMatch[1].replace(/agentora|agent|–|-/gi, "").trim());
       }
 
-      // Storage 업로드
       try {
         const uploadFormData = new FormData();
         uploadFormData.append("file", file);
@@ -117,7 +110,6 @@ export default function RegisterPage() {
     setLoading(true);
     setError("");
 
-    // ✅ 1) 필수 필드 유효성 검증 강화
     if (!form.name || !form.email || !form.title) {
       setError("이름, 이메일, 직함은 필수입니다.");
       setLoading(false);
@@ -131,16 +123,15 @@ export default function RegisterPage() {
     }
 
     try {
-      // ✅ 2) 로그인 여부 먼저 확인 — 미로그인 시 안내 후 중단
+      // ✅ 로그인 여부 확인
       const { data: { user } } = await supabase.auth.getUser();
-
       if (!user) {
         setError("로그인이 필요합니다. 먼저 로그인 후 다시 시도해주세요.");
         setLoading(false);
         return;
       }
 
-      // ✅ 3) 중복 등록 방지
+      // ✅ 중복 등록 방지
       const { data: existingExpert } = await supabase
         .from("experts")
         .select("id")
@@ -153,7 +144,7 @@ export default function RegisterPage() {
         return;
       }
 
-      // ✅ 4) experts 테이블 insert
+      // ✅ experts 테이블 insert
       const { error: expertError } = await supabase.from("experts").insert({
         user_id: user.id,
         name: form.name,
@@ -169,19 +160,17 @@ export default function RegisterPage() {
 
       if (expertError) throw expertError;
 
-      // ✅ 5) profiles.role → 'expert' 업데이트 (에러 핸들링 추가)
+      // ✅ profiles.role → 'expert' 업데이트
       const { error: roleError } = await supabase
         .from("profiles")
         .update({ role: "expert" })
         .eq("id", user.id);
 
       if (roleError) {
-        // experts는 등록됐지만 role 변경 실패 — 로그 남기고 사용자에게 안내
         console.error("role 업데이트 실패:", roleError);
-        // 치명적이지 않으므로 진행은 하되, 관리자에게 알릴 수 있도록 로그
       }
 
-      // ✅ 6) Agent 정보도 함께 등록
+      // ✅ Agent 등록 (user_id 포함)
       if (form.agentName) {
         const { error: agentError } = await supabase.from("agents").insert({
           name: form.agentName,
@@ -194,11 +183,11 @@ export default function RegisterPage() {
           price: parseInt(form.basicPrice) || 0,
           author_name: form.name,
           expert_email: form.email,
+          user_id: user.id,   // ✅ user_id 추가!
           emoji: "🤖",
           tags: form.categories,
           status: "pending",
         });
-
         if (agentError) throw agentError;
       }
 
@@ -232,9 +221,12 @@ export default function RegisterPage() {
 
   return (
     <main className="min-h-screen bg-gray-50">
-      {/* 네비게이션 */}
-      
-      {/* 헤더 */}
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-100 h-16 flex items-center justify-between px-5 md:px-10">
+        <Link href="/" className="flex items-center gap-2">
+          <span className="text-xl font-extrabold text-gray-900">Agentora</span>
+        </Link>
+      </nav>
+
       <div className="pt-16 bg-gradient-to-br from-gray-900 to-blue-900 px-5 md:px-10 py-8 md:py-10">
         <div className="max-w-3xl mx-auto">
           <h1 className="text-xl md:text-2xl font-extrabold text-white mb-2">🧑‍💼 전문가 Agent 등록</h1>
@@ -344,7 +336,6 @@ export default function RegisterPage() {
               <h2 className="text-base font-extrabold text-gray-900 mb-1">🤖 Agent 설정</h2>
               <p className="text-xs text-gray-400 mb-5">HTML 파일을 업로드하면 설정이 자동으로 추출돼요!</p>
 
-              {/* 파일 업로드 */}
               <div className="mb-5">
                 <label className="block text-xs font-bold text-gray-700 mb-1.5">🚀 HTML Agent 파일 업로드 (자동 추출)</label>
                 <div
@@ -468,7 +459,6 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            {/* 체크리스트 */}
             <div className="bg-gradient-to-br from-blue-50 to-orange-50 rounded-2xl border border-blue-100 p-5">
               <h3 className="text-sm font-extrabold text-gray-900 mb-3">📋 등록 전 체크리스트</h3>
               {[
