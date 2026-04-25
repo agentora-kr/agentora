@@ -5,21 +5,11 @@ import { createClient } from "@/lib/supabase";
 import { useAuth } from "../../providers";
 
 const CATEGORY_EMOJI: Record<string, string> = {
-  "데이터 분석": "📊",
-  "고객 응대": "📞",
-  "문서 자동화": "📝",
-  "영업·마케팅": "💼",
-  "법률·계약": "⚖️",
-  "재무·회계": "💰",
-  "제조·품질": "🏗️",
-  "IT·개발": "🔧",
-  "의료·헬스": "🏥",
-  "교육·HR": "🎓",
+  "데이터 분석": "📊", "고객 응대": "📞", "문서 자동화": "📝",
+  "영업·마케팅": "💼", "법률·계약": "⚖️", "재무·회계": "💰",
+  "제조·품질": "🏗️", "IT·개발": "🔧", "의료·헬스": "🏥", "교육·HR": "🎓",
 };
-
-function getEmoji(category: string): string {
-  return CATEGORY_EMOJI[category] || "🤖";
-}
+function getEmoji(category: string) { return CATEGORY_EMOJI[category] || "🤖"; }
 
 type Agent = {
   id: number;
@@ -46,21 +36,34 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
   const [input, setInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
   const [trial, setTrial] = useState(3);
+  const [iframeLoaded, setIframeLoaded] = useState(false);
   const { user } = useAuth();
   const supabase = createClient();
+
+  // ✅ localStorage에서 체험 횟수 불러오기 (Agent별로 관리)
+  const getTrialKey = (agentId: string) => `agentora_trial_${agentId}`;
 
   useEffect(() => {
     const fetchAgent = async () => {
       const { data, error } = await supabase.from("agents").select("*").eq("id", id).single();
       if (!error && data) {
         setAgent(data);
+
+        // 저장된 체험 횟수 불러오기
+        const savedTrial = localStorage.getItem(getTrialKey(id));
+        const currentTrial = savedTrial !== null ? parseInt(savedTrial) : 3;
+        setTrial(currentTrial);
+
         if (data.html_url) {
-          try {
-            const res = await fetch(data.html_url);
-            const html = await res.text();
-            setHtmlContent(html);
-          } catch (e) {
-            console.error("HTML 로드 실패:", e);
+          // ✅ 체험 횟수가 남아있을 때만 HTML 로드
+          if (currentTrial > 0) {
+            try {
+              const res = await fetch(data.html_url);
+              const html = await res.text();
+              setHtmlContent(html);
+            } catch (e) {
+              console.error("HTML 로드 실패:", e);
+            }
           }
         } else {
           setMessages([{
@@ -74,11 +77,25 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
     fetchAgent();
   }, [id]);
 
+  // ✅ iframe 로드 완료 시 체험 횟수 1회 차감
+  const handleIframeLoad = () => {
+    if (!iframeLoaded) {
+      setIframeLoaded(true);
+      const newTrial = Math.max(trial - 1, 0);
+      setTrial(newTrial);
+      localStorage.setItem(getTrialKey(id), newTrial.toString());
+    }
+  };
+
   const handleSend = async () => {
     if (!input.trim() || chatLoading || trial <= 0 || !agent) return;
     const userMsg = input.trim();
     setInput("");
-    setTrial((t) => t - 1);
+
+    // 채팅형 Agent도 체험 횟수 차감 + localStorage 저장
+    const newTrial = Math.max(trial - 1, 0);
+    setTrial(newTrial);
+    localStorage.setItem(getTrialKey(id), newTrial.toString());
 
     const newMessages = [...messages, { role: "user" as const, content: userMsg }];
     setMessages(newMessages);
@@ -173,21 +190,45 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
               <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
                 <div>
                   <h2 className="text-base font-extrabold text-gray-900">🍽️ 지금 바로 맛보기</h2>
-                  <p className="text-xs text-gray-400 mt-0.5">남은 체험 횟수: <strong className="text-orange-500">{trial}회</strong></p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    남은 체험 횟수: <strong className={trial > 0 ? "text-orange-500" : "text-red-500"}>{trial}회</strong>
+                  </p>
                 </div>
-                <span className="bg-orange-50 text-orange-500 text-xs font-bold px-3 py-1 rounded-full">무료 체험</span>
+                <span className={`text-xs font-bold px-3 py-1 rounded-full ${trial > 0 ? "bg-orange-50 text-orange-500" : "bg-red-50 text-red-500"}`}>
+                  {trial > 0 ? "무료 체험" : "체험 종료"}
+                </span>
               </div>
-              {htmlContent ? (
-                <iframe
-                  srcDoc={htmlContent}
-                  className="w-full"
-                  style={{ height: "700px", border: "none" }}
-                  title={agent.name}
-                  sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-                />
+
+              {/* ✅ 체험 횟수가 남아있으면 iframe, 없으면 구독 유도 */}
+              {trial > 0 || iframeLoaded ? (
+                htmlContent ? (
+                  <iframe
+                    srcDoc={htmlContent}
+                    className="w-full"
+                    style={{ height: "700px", border: "none" }}
+                    title={agent.name}
+                    sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                    onLoad={handleIframeLoad}
+                  />
+                ) : (
+                  <div className="flex items-center justify-center h-40">
+                    <p className="text-gray-400 text-sm">⏳ 로딩 중...</p>
+                  </div>
+                )
               ) : (
-                <div className="flex items-center justify-center h-40">
-                  <p className="text-gray-400 text-sm">⏳ 로딩 중...</p>
+                // ✅ 체험 횟수 소진 시 구독 유도 화면
+                <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+                  <div className="text-5xl mb-4">🔒</div>
+                  <h3 className="text-lg font-extrabold text-gray-900 mb-2">무료 체험이 종료되었어요</h3>
+                  <p className="text-sm text-gray-500 leading-relaxed mb-6 max-w-sm">
+                    {agent.name}의 모든 기능을 계속 사용하시려면<br />구독을 시작해보세요!
+                  </p>
+                  <Link href={user ? `/subscribe/${agent.id}` : "/login"}>
+                    <button className="px-8 py-3 bg-blue-600 text-white font-bold rounded-full hover:bg-blue-700 transition-all shadow-md text-sm">
+                      구독하고 계속 사용하기
+                    </button>
+                  </Link>
+                  <p className="text-xs text-gray-400 mt-4">🔒 입력 데이터는 저장되지 않습니다</p>
                 </div>
               )}
             </div>
@@ -196,10 +237,12 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
               <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-600 to-orange-500"></div>
               <div className="flex items-center justify-between mb-1">
                 <h2 className="text-base font-extrabold text-gray-900">🍽️ 지금 바로 맛보기</h2>
-                <span className="bg-orange-50 text-orange-500 text-xs font-bold px-3 py-1 rounded-full">무료 체험</span>
+                <span className={`text-xs font-bold px-3 py-1 rounded-full ${trial > 0 ? "bg-orange-50 text-orange-500" : "bg-red-50 text-red-500"}`}>
+                  {trial > 0 ? "무료 체험" : "체험 종료"}
+                </span>
               </div>
               <p className="text-xs text-gray-400 mb-4">
-                남은 체험 횟수: <strong className="text-orange-500">{trial}회</strong>
+                남은 체험 횟수: <strong className={trial > 0 ? "text-orange-500" : "text-red-500"}>{trial}회</strong>
               </p>
 
               <div className="bg-gray-50 rounded-xl border border-gray-100 h-72 md:h-80 overflow-y-auto p-4 flex flex-col gap-3 mb-3">
@@ -221,6 +264,18 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
                       <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce [animation-delay:0.15s]"></div>
                       <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce [animation-delay:0.3s]"></div>
                     </div>
+                  </div>
+                )}
+
+                {/* ✅ 채팅형도 체험 종료 시 메시지 표시 */}
+                {trial <= 0 && !chatLoading && (
+                  <div className="text-center py-4">
+                    <p className="text-sm text-gray-500 font-semibold mb-3">🔒 무료 체험이 종료되었어요</p>
+                    <Link href={user ? `/subscribe/${agent.id}` : "/login"}>
+                      <button className="px-6 py-2 bg-blue-600 text-white font-bold rounded-full text-xs hover:bg-blue-700 transition-all">
+                        구독하고 계속 사용하기
+                      </button>
+                    </Link>
                   </div>
                 )}
               </div>
@@ -276,7 +331,7 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
             {[
               ["카테고리", agent.category],
               ["제작자", agent.author_name],
-              ["맛보기", "3회 무료"],
+              ["맛보기", `${trial}회 남음`],
               ["평점", agent.rating > 0 ? `⭐ ${agent.rating}` : "리뷰 없음"],
               ["타입", agent.html_url ? "🚀 풀 기능" : "💬 채팅형"],
             ].map(([label, value]) => (
