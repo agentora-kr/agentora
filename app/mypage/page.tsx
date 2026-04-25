@@ -5,6 +5,23 @@ import { useAuth } from "../providers";
 import { createClient } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 
+const CATEGORY_EMOJI: Record<string, string> = {
+  "데이터 분석": "📊",
+  "고객 응대": "📞",
+  "문서 자동화": "📝",
+  "영업·마케팅": "💼",
+  "법률·계약": "⚖️",
+  "재무·회계": "💰",
+  "제조·품질": "🏗️",
+  "IT·개발": "🔧",
+  "의료·헬스": "🏥",
+  "교육·HR": "🎓",
+};
+
+function getEmoji(category: string): string {
+  return CATEGORY_EMOJI[category] || "🤖";
+}
+
 type Subscription = {
   id: number;
   agent_id: number;
@@ -40,7 +57,6 @@ export default function MyPage() {
         return;
       }
 
-      // 구독 목록 조회
       const { data: subData, error: subError } = await supabase
         .from("subscriptions")
         .select(`
@@ -65,7 +81,6 @@ export default function MyPage() {
         setSubscriptions((subData as unknown as Subscription[]) || []);
       }
 
-      // role 조회
       const { data: profileData } = await supabase
         .from("profiles")
         .select("role")
@@ -118,17 +133,8 @@ export default function MyPage() {
 
   return (
     <main className="min-h-screen bg-gray-50">
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-100 h-16 flex items-center justify-between px-5 md:px-10">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-orange-500 flex items-center justify-center text-sm">🤖</div>
-          <span className="text-xl font-extrabold text-gray-900">Agentora</span>
-        </Link>
-        <button onClick={handleLogout} className="px-4 py-2 rounded-full text-sm font-semibold border border-gray-200 text-gray-600 hover:border-red-400 hover:text-red-500 transition-all">
-          로그아웃
-        </button>
-      </nav>
 
-      <div className="pt-16 bg-gradient-to-br from-gray-900 to-blue-900 px-5 md:px-10 py-8 md:py-10">
+      <div className="bg-gradient-to-br from-gray-900 to-blue-900 px-5 md:px-10 py-8 md:py-10">
         <div className="max-w-5xl mx-auto flex items-center gap-4 md:gap-5">
           <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-white/20 flex items-center justify-center text-2xl md:text-3xl border-2 border-white/30 flex-shrink-0">👤</div>
           <div className="flex-1 min-w-0">
@@ -174,8 +180,9 @@ export default function MyPage() {
                 const { text, color } = statusLabel(sub.status);
                 return (
                   <div key={sub.id} className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl border border-gray-100 hover:border-blue-200 transition-all">
+                    {/* ✅ 무조건 카테고리 이모지 사용 */}
                     <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-2xl flex-shrink-0">
-                      {sub.agents?.emoji || "🤖"}
+                      {getEmoji(sub.agents?.category || "")}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">

@@ -4,6 +4,23 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase";
 import { useAuth } from "../../providers";
 
+const CATEGORY_EMOJI: Record<string, string> = {
+  "데이터 분석": "📊",
+  "고객 응대": "📞",
+  "문서 자동화": "📝",
+  "영업·마케팅": "💼",
+  "법률·계약": "⚖️",
+  "재무·회계": "💰",
+  "제조·품질": "🏗️",
+  "IT·개발": "🔧",
+  "의료·헬스": "🏥",
+  "교육·HR": "🎓",
+};
+
+function getEmoji(category: string): string {
+  return CATEGORY_EMOJI[category] || "🤖";
+}
+
 type Agent = {
   id: number;
   name: string;
@@ -38,7 +55,6 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
       if (!error && data) {
         setAgent(data);
         if (data.html_url) {
-          // HTML 파일 내용 직접 가져오기
           try {
             const res = await fetch(data.html_url);
             const html = await res.text();
@@ -111,26 +127,12 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
     );
   }
 
+  const emoji = getEmoji(agent.category);
+
   return (
     <main className="min-h-screen bg-gray-50">
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-100 h-16 flex items-center justify-between px-5 md:px-10">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-orange-500 flex items-center justify-center text-sm">🤖</div>
-          <span className="text-xl font-extrabold text-gray-900">Agentora</span>
-        </Link>
-        <div className="flex gap-3">
-          {user ? (
-            <Link href="/mypage"><button className="px-4 py-2 rounded-full text-sm font-semibold border border-gray-200 text-gray-600 hover:border-blue-500 hover:text-blue-600 transition-all">마이페이지</button></Link>
-          ) : (
-            <>
-              <Link href={user ? `/subscribe/${agent.id}` : "/login"}><button className="px-4 py-2 rounded-full text-sm font-semibold border border-gray-200 text-gray-600 hover:border-blue-500 transition-all">로그인</button></Link>
-              <Link href={user ? `/subscribe/${agent.id}` : "/login"}><button className="px-4 py-2 rounded-full text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-all shadow-md">무료 시작</button></Link>
-            </>
-          )}
-        </div>
-      </nav>
 
-      <div className="pt-16 bg-white border-b border-gray-100">
+      <div className="bg-white border-b border-gray-100">
         <div className="max-w-5xl mx-auto px-5 md:px-10 py-6 md:py-8">
           <div className="text-xs text-gray-400 mb-4">
             <Link href="/" className="hover:text-blue-600">홈</Link> ›{" "}
@@ -138,7 +140,7 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
           </div>
           <div className="flex gap-4 md:gap-5 items-start">
             <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-blue-50 flex items-center justify-center text-3xl md:text-4xl flex-shrink-0 border border-gray-100">
-              {agent.emoji}
+              {emoji}
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex gap-2 mb-2 flex-wrap">
@@ -204,7 +206,7 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
                 {messages.map((msg, i) => (
                   <div key={i} className={`flex gap-2 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm flex-shrink-0 ${msg.role === "user" ? "bg-blue-600 text-white text-xs font-bold" : "bg-blue-50"}`}>
-                      {msg.role === "user" ? "나" : agent.emoji}
+                      {msg.role === "user" ? "나" : emoji}
                     </div>
                     <div className={`max-w-[75%] px-3 py-2 rounded-xl text-xs leading-relaxed whitespace-pre-line ${msg.role === "user" ? "bg-blue-600 text-white rounded-tr-sm" : "bg-white border border-gray-100 text-gray-700 rounded-tl-sm"}`}>
                       {msg.content.replace(/#{1,6}\s/g, '').replace(/\*\*/g, '').replace(/\*/g, '').replace(/---/g, '').replace(/^-\s/gm, '• ')}
@@ -213,7 +215,7 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
                 ))}
                 {chatLoading && (
                   <div className="flex gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-sm">{agent.emoji}</div>
+                    <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-sm">{emoji}</div>
                     <div className="bg-white border border-gray-100 rounded-xl px-4 py-3 flex gap-1.5 items-center rounded-tl-sm">
                       <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce"></div>
                       <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce [animation-delay:0.15s]"></div>
