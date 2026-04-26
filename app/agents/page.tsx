@@ -6,7 +6,6 @@ import { createClient } from "@/lib/supabase";
 
 const categories = ["전체", "데이터 분석", "고객 응대", "문서 자동화", "영업·마케팅", "법률·계약", "재무·회계", "제조·품질", "IT·개발"];
 
-// ✅ 카테고리별 이모지 — 무조건 이걸 사용 (DB 값 무시)
 const CATEGORY_EMOJI: Record<string, string> = {
   "데이터 분석": "📊",
   "고객 응대": "📞",
@@ -49,7 +48,11 @@ export default function AgentsPage() {
 
   useEffect(() => {
     const fetchAgents = async () => {
-      const { data, error } = await supabase.from("agents").select("*").order("created_at", { ascending: false });
+      const { data, error } = await supabase
+        .from("agents")
+        .select("*")
+        .eq("status", "approved")  // ✅ 승인된 Agent만 노출
+        .order("created_at", { ascending: false });
       if (!error && data) setAgents(data);
       setLoading(false);
     };
@@ -150,7 +153,6 @@ export default function AgentsPage() {
                     </span>
                   )}
                   <div className="p-4 flex gap-3 items-start">
-                    {/* ✅ 무조건 카테고리 이모지 사용 */}
                     <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-2xl flex-shrink-0">
                       {getAgentEmoji(agent.category)}
                     </div>
