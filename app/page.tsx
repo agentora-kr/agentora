@@ -28,7 +28,7 @@ export default function Home() {
       <div className="bg-gradient-to-br from-gray-900 via-blue-950 to-gray-900 px-5 md:px-10 py-20 md:py-32 text-center">
         <div className="max-w-3xl mx-auto">
           <div className="inline-block bg-orange-500/10 text-orange-400 text-xs font-bold px-4 py-1.5 rounded-full mb-6 border border-orange-500/20">
-            국내 최초 AI Agent B2B 마켓플레이스
+            회사 업무 자동화 AI Agent
           </div>
           <h1 className="text-3xl md:text-5xl font-extrabold text-white leading-tight mb-6">
             전문가의 지식을<br />
