@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase";
 
@@ -18,6 +18,7 @@ export default function RegisterPage() {
   const [htmlFile, setHtmlFile] = useState<File | null>(null);
   const [systemPrompt, setSystemPrompt] = useState("");
   const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "done" | "error">("idle");
+  const [isAlreadyExpert, setIsAlreadyExpert] = useState(false); // ✅ 이미 전문가인지
   const supabase = createClient();
 
   const [form, setForm] = useState({
@@ -26,6 +27,37 @@ export default function RegisterPage() {
     agentName: "", agentDesc: "", agentLongDesc: "",
     sampleQuestion: "", basicPrice: "", proPrice: "", trialCount: "3",
   });
+
+  // ✅ 이미 전문가인 경우 기본 정보 자동 채우기 + Step 2로 바로 이동
+  useEffect(() => {
+    const checkExpert = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: expert } = await supabase
+        .from("experts")
+        .select("*")
+        .eq("user_id", user.id)
+        .single();
+
+      if (expert) {
+        setIsAlreadyExpert(true);
+        setForm(prev => ({
+          ...prev,
+          name: expert.name || "",
+          title: expert.title || "",
+          company: expert.company || "",
+          email: expert.email || "",
+          experience: expert.experience || "",
+          intro: expert.intro || "",
+          description: expert.description || "",
+          categories: expert.categories || [],
+        }));
+        setStep(2); // 바로 Agent 설정 단계로
+      }
+    };
+    checkExpert();
+  }, []);
 
   const update = (key: string, value: string) =>
     setForm(prev => ({ ...prev, [key]: value }));
@@ -123,7 +155,6 @@ export default function RegisterPage() {
     }
 
     try {
-      // ✅ 로그인 여부 확인
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         setError("로그인이 필요합니다. 먼저 로그인 후 다시 시도해주세요.");
@@ -131,46 +162,34 @@ export default function RegisterPage() {
         return;
       }
 
-      // ✅ 중복 등록 방지
-      const { data: existingExpert } = await supabase
-        .from("experts")
-        .select("id")
-        .eq("user_id", user.id)
-        .single();
+      // ✅ 이미 전문가가 아닐 때만 experts 등록 + role 업데이트
+      if (!isAlreadyExpert) {
+        const { error: expertError } = await supabase.from("experts").insert({
+          user_id: user.id,
+          name: form.name,
+          title: form.title,
+          company: form.company,
+          email: form.email,
+          experience: form.experience,
+          intro: form.intro,
+          description: form.description,
+          categories: form.categories,
+          status: "pending",
+        });
 
-      if (existingExpert) {
-        setError("이미 전문가로 등록되어 있습니다. 마이페이지에서 확인해주세요.");
-        setLoading(false);
-        return;
+        if (expertError) throw expertError;
+
+        const { error: roleError } = await supabase
+          .from("profiles")
+          .update({ role: "expert" })
+          .eq("id", user.id);
+
+        if (roleError) {
+          console.error("role 업데이트 실패:", roleError);
+        }
       }
 
-      // ✅ experts 테이블 insert
-      const { error: expertError } = await supabase.from("experts").insert({
-        user_id: user.id,
-        name: form.name,
-        title: form.title,
-        company: form.company,
-        email: form.email,
-        experience: form.experience,
-        intro: form.intro,
-        description: form.description,
-        categories: form.categories,
-        status: "pending",
-      });
-
-      if (expertError) throw expertError;
-
-      // ✅ profiles.role → 'expert' 업데이트
-      const { error: roleError } = await supabase
-        .from("profiles")
-        .update({ role: "expert" })
-        .eq("id", user.id);
-
-      if (roleError) {
-        console.error("role 업데이트 실패:", roleError);
-      }
-
-      // ✅ Agent 등록 (user_id 포함)
+      // ✅ Agent 등록은 항상 실행
       if (form.agentName) {
         const { error: agentError } = await supabase.from("agents").insert({
           name: form.agentName,
@@ -183,7 +202,7 @@ export default function RegisterPage() {
           price: parseInt(form.basicPrice) || 0,
           author_name: form.name,
           expert_email: form.email,
-          user_id: user.id,   // ✅ user_id 추가!
+          user_id: user.id,
           emoji: "🤖",
           tags: form.categories,
           status: "pending",
@@ -204,16 +223,28 @@ export default function RegisterPage() {
       <main className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-5">
         <div className="bg-white rounded-2xl p-10 shadow-xl max-w-md w-full text-center">
           <div className="text-6xl mb-4">🎉</div>
-          <h2 className="text-2xl font-extrabold text-gray-900 mb-3">등록 신청 완료!</h2>
+          <h2 className="text-2xl font-extrabold text-gray-900 mb-3">
+            {isAlreadyExpert ? "Agent 등록 완료!" : "등록 신청 완료!"}
+          </h2>
           <p className="text-gray-500 text-sm leading-relaxed mb-6">
-            전문가 등록 신청이 완료됐어요.<br />
-            검토 후 1~3일 내로 이메일로 안내드릴게요!
+            {isAlreadyExpert
+              ? "새 Agent 등록이 완료됐어요.\n관리자 승인 후 공개됩니다!"
+              : "전문가 등록 신청이 완료됐어요.\n검토 후 1~3일 내로 이메일로 안내드릴게요!"}
           </p>
-          <Link href="/">
-            <button className="w-full py-3 bg-blue-600 text-white font-bold rounded-full hover:bg-blue-700 transition-all text-sm">
-              홈으로 돌아가기
-            </button>
-          </Link>
+          <div className="flex flex-col gap-3">
+            {isAlreadyExpert && (
+              <Link href="/expert/dashboard">
+                <button className="w-full py-3 bg-blue-600 text-white font-bold rounded-full hover:bg-blue-700 transition-all text-sm">
+                  대시보드로 가기
+                </button>
+              </Link>
+            )}
+            <Link href="/">
+              <button className={`w-full py-3 font-bold rounded-full transition-all text-sm ${isAlreadyExpert ? "border border-gray-200 text-gray-600 hover:bg-gray-50" : "bg-blue-600 text-white hover:bg-blue-700"}`}>
+                홈으로 돌아가기
+              </button>
+            </Link>
+          </div>
         </div>
       </main>
     );
@@ -221,16 +252,17 @@ export default function RegisterPage() {
 
   return (
     <main className="min-h-screen bg-gray-50">
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-100 h-16 flex items-center justify-between px-5 md:px-10">
-        <Link href="/" className="flex items-center gap-2">
-          <span className="text-xl font-extrabold text-gray-900">Agentora</span>
-        </Link>
-      </nav>
 
       <div className="pt-16 bg-gradient-to-br from-gray-900 to-blue-900 px-5 md:px-10 py-8 md:py-10">
         <div className="max-w-3xl mx-auto">
-          <h1 className="text-xl md:text-2xl font-extrabold text-white mb-2">🧑‍💼 전문가 Agent 등록</h1>
-          <p className="text-sm text-gray-400 mb-5">전문 지식을 AI Agent로 패키징하고 수천 개 기업에 공급하세요.</p>
+          <h1 className="text-xl md:text-2xl font-extrabold text-white mb-2">
+            {isAlreadyExpert ? "🤖 새 Agent 등록" : "🧑‍💼 전문가 Agent 등록"}
+          </h1>
+          <p className="text-sm text-gray-400 mb-5">
+            {isAlreadyExpert
+              ? "새로운 AI Agent를 추가 등록하세요."
+              : "전문 지식을 AI Agent로 패키징하고 수천 개 기업에 공급하세요."}
+          </p>
           <div className="w-full bg-white/10 rounded-full h-1.5 mb-3">
             <div
               className="h-full rounded-full bg-gradient-to-r from-blue-400 to-orange-400 transition-all duration-500"
@@ -238,7 +270,9 @@ export default function RegisterPage() {
             />
           </div>
           <div className="flex justify-between text-xs font-semibold">
-            <span className={step >= 1 ? "text-white" : "text-gray-500"}>① 기본 정보</span>
+            <span className={step >= 1 ? "text-white" : "text-gray-500"}>
+              {isAlreadyExpert ? "✅ 기본 정보" : "① 기본 정보"}
+            </span>
             <span className={step >= 2 ? "text-white" : "text-gray-500"}>② Agent 설정</span>
             <span className={step >= 3 ? "text-white" : "text-gray-500"}>③ 가격·공개</span>
           </div>
@@ -249,6 +283,13 @@ export default function RegisterPage() {
         {error && (
           <div className="bg-red-50 text-red-500 text-sm font-semibold px-4 py-3 rounded-xl mb-4">
             {error}
+          </div>
+        )}
+
+        {/* ✅ 이미 전문가일 때 안내 배너 */}
+        {isAlreadyExpert && step === 2 && (
+          <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 mb-4">
+            <p className="text-xs text-blue-600 font-semibold">✅ 이미 전문가로 등록되어 있어요! 새 Agent 정보만 입력하면 돼요.</p>
           </div>
         )}
 
@@ -419,12 +460,14 @@ export default function RegisterPage() {
             </div>
 
             <div className="flex justify-between">
-              <button onClick={() => setStep(1)}
-                className="px-8 py-3 border border-gray-200 text-gray-600 font-bold rounded-full hover:border-blue-400 hover:text-blue-600 transition-all text-sm">
-                ← 이전
-              </button>
+              {!isAlreadyExpert && (
+                <button onClick={() => setStep(1)}
+                  className="px-8 py-3 border border-gray-200 text-gray-600 font-bold rounded-full hover:border-blue-400 hover:text-blue-600 transition-all text-sm">
+                  ← 이전
+                </button>
+              )}
               <button onClick={() => setStep(3)}
-                className="px-8 py-3 bg-blue-600 text-white font-bold rounded-full hover:bg-blue-700 transition-all shadow-md text-sm">
+                className={`px-8 py-3 bg-blue-600 text-white font-bold rounded-full hover:bg-blue-700 transition-all shadow-md text-sm ${isAlreadyExpert ? "ml-auto" : ""}`}>
                 다음 단계 →
               </button>
             </div>
@@ -480,7 +523,7 @@ export default function RegisterPage() {
               </button>
               <button onClick={handleSubmit} disabled={loading}
                 className="px-8 py-3 bg-blue-600 text-white font-bold rounded-full hover:bg-blue-700 transition-all shadow-md text-sm disabled:opacity-50">
-                {loading ? "등록 중..." : "등록 신청하기 🎉"}
+                {loading ? "등록 중..." : isAlreadyExpert ? "Agent 등록하기 🤖" : "등록 신청하기 🎉"}
               </button>
             </div>
           </div>
