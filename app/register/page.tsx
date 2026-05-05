@@ -18,7 +18,7 @@ export default function RegisterPage() {
   const [htmlFile, setHtmlFile] = useState<File | null>(null);
   const [systemPrompt, setSystemPrompt] = useState("");
   const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "done" | "error">("idle");
-  const [isAlreadyExpert, setIsAlreadyExpert] = useState(false); // ✅ 이미 전문가인지
+  const [isAlreadyExpert, setIsAlreadyExpert] = useState(false);
   const supabase = createClient();
 
   const [form, setForm] = useState({
@@ -28,7 +28,7 @@ export default function RegisterPage() {
     sampleQuestion: "", basicPrice: "", proPrice: "", trialCount: "3",
   });
 
-  // ✅ 이미 전문가인 경우 기본 정보 자동 채우기 + Step 2로 바로 이동
+  // ✅ 페이지 로드 시 이미 전문가인지 확인
   useEffect(() => {
     const checkExpert = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -53,7 +53,7 @@ export default function RegisterPage() {
           description: expert.description || "",
           categories: expert.categories || [],
         }));
-        setStep(2); // 바로 Agent 설정 단계로
+        setStep(2);
       }
     };
     checkExpert();
@@ -162,8 +162,17 @@ export default function RegisterPage() {
         return;
       }
 
-      // ✅ 이미 전문가가 아닐 때만 experts 등록 + role 업데이트
-      if (!isAlreadyExpert) {
+      // ✅ handleSubmit 안에서 직접 다시 확인 (타이밍 문제 방지)
+      const { data: existingExpert } = await supabase
+        .from("experts")
+        .select("id")
+        .eq("user_id", user.id)
+        .single();
+
+      const alreadyExpert = !!existingExpert;
+
+      // ✅ 전문가가 아닐 때만 experts insert + role 업데이트
+      if (!alreadyExpert) {
         const { error: expertError } = await supabase.from("experts").insert({
           user_id: user.id,
           name: form.name,
@@ -286,7 +295,6 @@ export default function RegisterPage() {
           </div>
         )}
 
-        {/* ✅ 이미 전문가일 때 안내 배너 */}
         {isAlreadyExpert && step === 2 && (
           <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 mb-4">
             <p className="text-xs text-blue-600 font-semibold">✅ 이미 전문가로 등록되어 있어요! 새 Agent 정보만 입력하면 돼요.</p>
