@@ -70,16 +70,16 @@ export default function SMBAgentsPage() {
   return (
     <main className="min-h-screen bg-gray-50">
 
-      {/* 헤더 */}
-      <div className="bg-gradient-to-br from-orange-600 to-amber-500 px-5 md:px-10 pb-0">
-        <div className="max-w-5xl mx-auto pt-8 md:pt-10 pb-0">
+      {/* 헤더 — 검색창까지 헤더 안에 포함 */}
+      <div className="bg-gradient-to-br from-orange-600 to-amber-500 px-5 md:px-10 pb-10">
+        <div className="max-w-5xl mx-auto pt-8 md:pt-10">
           <div className="text-xs text-orange-100 mb-3">
             <Link href="/" className="hover:text-white transition-colors">홈</Link> ›{" "}
             <Link href="/smb" className="hover:text-white transition-colors">소상공인 전용관</Link> › Agent 목록
           </div>
           <h1 className="text-xl md:text-2xl font-extrabold text-white mb-2">🏪 소상공인 마케팅 Agent</h1>
           <p className="text-sm text-orange-100 mb-5">사장님을 위한 마케팅 자동화 AI Agent를 찾아보세요.</p>
-          <div className="flex bg-white rounded-full overflow-hidden shadow-lg max-w-lg mb-6">
+          <div className="flex bg-white rounded-full overflow-hidden shadow-lg max-w-lg">
             <input
               type="text"
               placeholder="Agent 이름, 기능 검색..."
