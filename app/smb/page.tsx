@@ -1,9 +1,7 @@
 "use client";
 import Link from "next/link";
-import { useState } from "react";
 
 export default function SMBPage() {
-  const [showDemo, setShowDemo] = useState<"content" | "review" | null>(null);
 
   return (
     <main className="min-h-screen bg-white">
@@ -69,24 +67,22 @@ export default function SMBPage() {
             <p className="text-gray-400 text-sm">가입 없이 바로 체험해보세요</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <button
-              onClick={() => setShowDemo("content")}
-              className="bg-orange-50 rounded-2xl border border-orange-200 p-6 text-left hover:border-orange-400 hover:shadow-md transition-all cursor-pointer"
-            >
-              <div className="text-3xl mb-3">📸</div>
-              <h3 className="font-extrabold text-gray-900 mb-1">콘텐츠 자동 생성</h3>
-              <p className="text-xs text-gray-500 leading-relaxed">사진 한 장으로 인스타·블로그·릴스·카톡 콘텐츠 자동 생성</p>
-              <span className="inline-block mt-3 text-xs font-bold text-orange-500">무료 체험 →</span>
-            </button>
-            <button
-              onClick={() => setShowDemo("review")}
-              className="bg-yellow-50 rounded-2xl border border-yellow-200 p-6 text-left hover:border-yellow-400 hover:shadow-md transition-all cursor-pointer"
-            >
-              <div className="text-3xl mb-3">⭐</div>
-              <h3 className="font-extrabold text-gray-900 mb-1">리뷰 관리 자동화</h3>
-              <p className="text-xs text-gray-500 leading-relaxed">리뷰 캡처 한 장이면 분석 + 답변 초안 + SNS 홍보까지</p>
-              <span className="inline-block mt-3 text-xs font-bold text-yellow-600">무료 체험 →</span>
-            </button>
+            <Link href="/agents/18">
+              <div className="bg-orange-50 rounded-2xl border border-orange-200 p-6 text-left hover:border-orange-400 hover:shadow-md transition-all cursor-pointer">
+                <div className="text-3xl mb-3">📸</div>
+                <h3 className="font-extrabold text-gray-900 mb-1">콘텐츠 자동 생성</h3>
+                <p className="text-xs text-gray-500 leading-relaxed">사진 한 장으로 인스타·블로그·릴스·카톡 콘텐츠 자동 생성</p>
+                <span className="inline-block mt-3 text-xs font-bold text-orange-500">무료 체험 →</span>
+              </div>
+            </Link>
+            <Link href="/agents/17">
+              <div className="bg-yellow-50 rounded-2xl border border-yellow-200 p-6 text-left hover:border-yellow-400 hover:shadow-md transition-all cursor-pointer">
+                <div className="text-3xl mb-3">⭐</div>
+                <h3 className="font-extrabold text-gray-900 mb-1">리뷰 관리 자동화</h3>
+                <p className="text-xs text-gray-500 leading-relaxed">리뷰 캡처 한 장이면 분석 + 답변 초안 + SNS 홍보까지</p>
+                <span className="inline-block mt-3 text-xs font-bold text-yellow-600">무료 체험 →</span>
+              </div>
+            </Link>
           </div>
         </div>
       </section>
@@ -142,12 +138,11 @@ export default function SMBPage() {
                   </li>
                 ))}
               </ul>
-              <button
-                onClick={() => setShowDemo("content")}
-                className="mt-5 px-6 py-3 bg-orange-500 text-white font-bold rounded-full hover:bg-orange-600 text-sm"
-              >
-                지금 무료 체험 →
-              </button>
+              <Link href="/agents/18">
+                <button className="mt-5 px-6 py-3 bg-orange-500 text-white font-bold rounded-full hover:bg-orange-600 text-sm">
+                  지금 무료 체험 →
+                </button>
+              </Link>
             </div>
             <div className="flex-1 bg-orange-50 rounded-2xl p-6 border border-orange-100 text-center">
               <div className="text-5xl mb-3">📸</div>
@@ -183,12 +178,11 @@ export default function SMBPage() {
                   </li>
                 ))}
               </ul>
-              <button
-                onClick={() => setShowDemo("review")}
-                className="mt-5 px-6 py-3 bg-yellow-500 text-white font-bold rounded-full hover:bg-yellow-600 text-sm"
-              >
-                지금 무료 체험 →
-              </button>
+              <Link href="/agents/17">
+                <button className="mt-5 px-6 py-3 bg-yellow-500 text-white font-bold rounded-full hover:bg-yellow-600 text-sm">
+                  지금 무료 체험 →
+                </button>
+              </Link>
             </div>
             <div className="flex-1 bg-yellow-50 rounded-2xl p-6 border border-yellow-100 text-center">
               <div className="text-5xl mb-3">📸</div>
@@ -261,37 +255,6 @@ export default function SMBPage() {
         <span className="text-white font-extrabold">Agentora</span>
         <p className="text-gray-500 text-xs mt-2">© 2026 Agentora. All rights reserved.</p>
       </footer>
-
-      {/* 체험 모달 */}
-      {showDemo && (
-        <div
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
-          onClick={() => setShowDemo(null)}
-        >
-          <div
-            className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between p-5 border-b border-gray-100">
-              <h3 className="font-extrabold text-gray-900">
-                {showDemo === "content" ? "📸 콘텐츠 운영 Agent 체험" : "⭐ 리뷰 관리 Agent 체험"}
-              </h3>
-              <button
-                onClick={() => setShowDemo(null)}
-                className="text-gray-400 hover:text-gray-600 text-xl font-bold"
-              >✕</button>
-            </div>
-            <div className="overflow-y-auto" style={{ maxHeight: "calc(90vh - 80px)" }}>
-              <iframe
-                src={showDemo === "content" ? "/agents/1" : "/agents/2"}
-                className="w-full"
-                style={{ height: "70vh", border: "none" }}
-                title="Agent 체험"
-              />
-            </div>
-          </div>
-        </div>
-      )}
 
     </main>
   );
