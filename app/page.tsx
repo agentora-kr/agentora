@@ -27,9 +27,6 @@ export default function Home() {
       {/* 히어로 섹션 */}
       <div className="bg-gradient-to-br from-gray-900 via-blue-950 to-gray-900 px-5 md:px-10 py-20 md:py-32 text-center">
         <div className="max-w-3xl mx-auto">
-          <div className="inline-block bg-orange-500/10 text-orange-400 text-xs font-bold px-4 py-1.5 rounded-full mb-6 border border-orange-500/20">
-            회사 업무 자동화 AI Agent
-          </div>
           <h1 className="text-3xl md:text-5xl font-extrabold text-white leading-tight mb-6">
             전문가의 지식을<br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-orange-400">AI Agent</span>로 만나세요
@@ -53,8 +50,40 @@ export default function Home() {
         </div>
       </div>
 
+      {/* 소상공인 전용관 배너 */}
+      <div className="max-w-5xl mx-auto px-5 md:px-10 py-8">
+        <Link href="/smb">
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-orange-500 via-amber-500 to-orange-400 p-6 md:p-8 cursor-pointer hover:shadow-xl transition-all group">
+            <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
+            <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/4" />
+            <div className="relative flex items-center justify-between">
+              <div>
+                <div className="inline-block bg-white/20 text-white text-xs font-bold px-3 py-1 rounded-full mb-3">
+                  🏪 NEW 전용관 오픈
+                </div>
+                <h3 className="text-xl md:text-2xl font-extrabold text-white mb-2">
+                  소상공인 마케팅 전용관
+                </h3>
+                <p className="text-white/80 text-sm leading-relaxed">
+                  사진 한 장이면 인스타·블로그·리뷰 답변까지 자동으로!<br />
+                  대행사 비용의 1/10로 마케팅을 시작하세요.
+                </p>
+              </div>
+              <div className="hidden md:block text-5xl group-hover:scale-110 transition-transform">
+                🚀
+              </div>
+            </div>
+            <div className="relative mt-4">
+              <span className="inline-block bg-white text-orange-500 text-xs font-bold px-4 py-2 rounded-full group-hover:bg-orange-50 transition-all">
+                전용관 입장하기 →
+              </span>
+            </div>
+          </div>
+        </Link>
+      </div>
+
       {/* 카테고리 섹션 */}
-      <div className="max-w-5xl mx-auto px-5 md:px-10 py-16">
+      <div className="max-w-5xl mx-auto px-5 md:px-10 py-8">
         <div className="text-center mb-10">
           <h2 className="text-2xl font-extrabold text-gray-900 mb-2">분야별 AI Agent</h2>
           <p className="text-gray-500 text-sm">다양한 전문 분야의 Agent를 찾아보세요</p>
