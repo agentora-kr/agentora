@@ -14,6 +14,7 @@ export default function SMBRegisterPage() {
   const [systemPrompt, setSystemPrompt] = useState("");
   const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "done" | "error">("idle");
   const [isAlreadyExpert, setIsAlreadyExpert] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const supabase = createClient();
 
   const [form, setForm] = useState({
@@ -29,13 +30,15 @@ export default function SMBRegisterPage() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) { setPageLoading(false); return; }
 
-        const { data: expert, error: expertError } = await supabase
+        setCurrentUserId(user.id);
+
+        const { data: expert } = await supabase
           .from("experts")
           .select("*")
           .eq("user_id", user.id)
           .maybeSingle();
 
-        if (!expertError && expert) {
+        if (expert) {
           setIsAlreadyExpert(true);
           setForm(prev => ({
             ...prev,
@@ -109,41 +112,71 @@ export default function SMBRegisterPage() {
     }
 
     try {
+      // 로그인 상태 재확인
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { setError("로그인이 필요합니다."); setLoading(false); return; }
-
-      const { data: existingExpert } = await supabase
-        .from("experts").select("id").eq("user_id", user.id).maybeSingle();
-      const alreadyExpert = !!existingExpert;
-
-      if (!alreadyExpert) {
-        const { error: expertError } = await supabase.from("experts").insert({
-          user_id: user.id, name: form.name, title: form.title,
-          company: form.company, email: form.email, experience: form.experience,
-          intro: form.intro, description: form.description,
-          categories: ["🏪 소상공인 마케팅"], status: "pending",
-        });
-        if (expertError) throw new Error(expertError.message);
-
-        await supabase.from("profiles").update({ role: "expert" }).eq("id", user.id);
+      if (!user) {
+        setError("로그인이 필요합니다. 먼저 로그인 후 다시 시도해주세요.");
+        setLoading(false);
+        return;
       }
 
+      // 전문가 여부 재확인
+      const { data: existingExpert } = await supabase
+        .from("experts").select("id").eq("user_id", user.id).maybeSingle();
+
+      // 전문가 아닐 때만 insert
+      if (!existingExpert) {
+        const { error: expertError } = await supabase.from("experts").insert({
+          user_id: user.id,
+          name: form.name,
+          title: form.title,
+          company: form.company,
+          email: form.email,
+          experience: form.experience,
+          intro: form.intro,
+          description: form.description,
+          categories: ["소상공인 마케팅"],
+          status: "pending",
+        });
+
+        if (expertError) {
+          console.error("experts insert 에러:", expertError);
+          // 중복 에러면 무시하고 진행
+          if (!expertError.message.includes("duplicate") && !expertError.message.includes("violates")) {
+            throw new Error(`전문가 등록 실패: ${expertError.message}`);
+          }
+        } else {
+          await supabase.from("profiles").update({ role: "expert" }).eq("id", user.id);
+        }
+      }
+
+      // Agent 등록
       const { error: agentError } = await supabase.from("agents").insert({
-        name: form.agentName, description: form.agentDesc,
-        long_description: form.agentLongDesc, system_prompt: systemPrompt,
-        sample_question: form.sampleQuestion, html_url: htmlUrl || null,
+        name: form.agentName,
+        description: form.agentDesc,
+        long_description: form.agentLongDesc,
+        system_prompt: systemPrompt,
+        sample_question: form.sampleQuestion,
+        html_url: htmlUrl || null,
         category: "소상공인 마케팅",
         price: parseInt(form.basicPrice) || 0,
-        author_name: form.name, expert_email: form.email,
-        user_id: user.id, emoji: "🏪",
-        tags: ["소상공인 마케팅"], status: "pending",
+        author_name: form.name,
+        expert_email: form.email,
+        user_id: user.id,
+        emoji: "🏪",
+        tags: ["소상공인 마케팅"],
+        status: "pending",
       });
-      if (agentError) throw new Error(agentError.message);
+
+      if (agentError) {
+        console.error("agents insert 에러:", agentError);
+        throw new Error(`Agent 등록 실패: ${agentError.message}`);
+      }
 
       setSuccess(true);
     } catch (err: any) {
-      console.error(err);
-      setError(err.message || "등록 중 오류가 발생했어요.");
+      console.error("등록 에러:", err);
+      setError(err.message || "등록 중 오류가 발생했어요. 다시 시도해주세요.");
     }
     setLoading(false);
   };
@@ -153,6 +186,23 @@ export default function SMBRegisterPage() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center"><div className="text-4xl mb-3">⏳</div><p className="text-gray-400 text-sm">불러오는 중...</p></div>
       </div>
+    );
+  }
+
+  if (!currentUserId && !pageLoading) {
+    return (
+      <main className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-5">
+        <div className="bg-white rounded-2xl p-10 shadow-xl max-w-md w-full text-center">
+          <div className="text-6xl mb-4">🔒</div>
+          <h2 className="text-xl font-extrabold text-gray-900 mb-3">로그인이 필요해요</h2>
+          <p className="text-gray-500 text-sm leading-relaxed mb-6">Agent를 등록하려면 먼저 로그인해주세요.</p>
+          <Link href="/login">
+            <button className="w-full py-3 bg-orange-500 text-white font-bold rounded-full hover:bg-orange-600 transition-all text-sm">
+              로그인하러 가기
+            </button>
+          </Link>
+        </div>
+      </main>
     );
   }
 
@@ -269,7 +319,6 @@ export default function SMBRegisterPage() {
                 </div>
               </div>
             </div>
-
             <div className="flex justify-end">
               <button onClick={() => setStep(2)} className="px-8 py-3 bg-orange-500 text-white font-bold rounded-full hover:bg-orange-600 transition-all shadow-md text-sm">
                 다음 단계 →
