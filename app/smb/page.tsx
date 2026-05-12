@@ -10,10 +10,16 @@ export default function SMBPage() {
 
       {/* 네비게이션 */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-100 h-16 flex items-center justify-between px-5 md:px-10">
-        <Link href="/" className="text-xl font-extrabold text-gray-900">Agentora</Link>
+        <Link href="/smb" className="flex items-center gap-2">
+          <span className="text-xl font-extrabold text-gray-900">Agentora</span>
+          <span className="text-xs font-bold bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full border border-orange-200">소상공인</span>
+        </Link>
         <div className="flex items-center gap-3">
-          <Link href="/agents">
-            <button className="px-4 py-2 text-sm font-semibold text-gray-600 hover:text-gray-900">전체 Agent</button>
+          <Link href="/smb/agents">
+            <button className="px-4 py-2 text-sm font-semibold text-gray-600 hover:text-orange-500">Agent 목록</button>
+          </Link>
+          <Link href="/smb/register">
+            <button className="px-4 py-2 text-sm font-semibold text-gray-600 hover:text-orange-500 hidden md:block">전문가 등록</button>
           </Link>
           <Link href="/login">
             <button className="px-5 py-2 text-sm font-bold text-white bg-orange-500 rounded-full hover:bg-orange-600 shadow-sm">무료 시작</button>
@@ -41,17 +47,45 @@ export default function SMBPage() {
             마케팅 대행사 월 50만원 → Agentora 월 1~5만원
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Link href="/smb/agents">
+              <button className="px-8 py-4 bg-orange-500 text-white font-bold rounded-full hover:bg-orange-600 shadow-lg text-sm">
+                🏪 마케팅 Agent 둘러보기
+              </button>
+            </Link>
+            <Link href="/smb/register">
+              <button className="px-8 py-4 bg-white text-gray-700 font-bold rounded-full hover:bg-gray-50 border border-gray-200 text-sm">
+                🧑‍💼 전문가로 등록하기
+              </button>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* 빠른 체험 섹션 */}
+      <section className="py-12 px-5 md:px-10 bg-white">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-8">
+            <h2 className="text-xl font-extrabold text-gray-900 mb-2">🍽️ 지금 바로 맛보기</h2>
+            <p className="text-gray-400 text-sm">가입 없이 바로 체험해보세요</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <button
               onClick={() => setShowDemo("content")}
-              className="px-8 py-4 bg-orange-500 text-white font-bold rounded-full hover:bg-orange-600 shadow-lg text-sm"
+              className="bg-orange-50 rounded-2xl border border-orange-200 p-6 text-left hover:border-orange-400 hover:shadow-md transition-all cursor-pointer"
             >
-              📸 콘텐츠 자동 생성 체험하기
+              <div className="text-3xl mb-3">📸</div>
+              <h3 className="font-extrabold text-gray-900 mb-1">콘텐츠 자동 생성</h3>
+              <p className="text-xs text-gray-500 leading-relaxed">사진 한 장으로 인스타·블로그·릴스·카톡 콘텐츠 자동 생성</p>
+              <span className="inline-block mt-3 text-xs font-bold text-orange-500">무료 체험 →</span>
             </button>
             <button
               onClick={() => setShowDemo("review")}
-              className="px-8 py-4 bg-white text-gray-700 font-bold rounded-full hover:bg-gray-50 border border-gray-200 text-sm"
+              className="bg-yellow-50 rounded-2xl border border-yellow-200 p-6 text-left hover:border-yellow-400 hover:shadow-md transition-all cursor-pointer"
             >
-              ⭐ 리뷰 관리 체험하기
+              <div className="text-3xl mb-3">⭐</div>
+              <h3 className="font-extrabold text-gray-900 mb-1">리뷰 관리 자동화</h3>
+              <p className="text-xs text-gray-500 leading-relaxed">리뷰 캡처 한 장이면 분석 + 답변 초안 + SNS 홍보까지</p>
+              <span className="inline-block mt-3 text-xs font-bold text-yellow-600">무료 체험 →</span>
             </button>
           </div>
         </div>
@@ -169,6 +203,19 @@ export default function SMBPage() {
         </div>
       </section>
 
+      {/* 전체 Agent 보러가기 */}
+      <section className="py-12 px-5 md:px-10 bg-orange-50 text-center">
+        <div className="max-w-2xl mx-auto">
+          <h2 className="text-xl font-extrabold text-gray-900 mb-3">더 많은 마케팅 Agent를 찾아보세요</h2>
+          <p className="text-gray-500 text-sm mb-6">소상공인을 위한 다양한 AI Agent가 준비되어 있어요.</p>
+          <Link href="/smb/agents">
+            <button className="px-8 py-3 bg-orange-500 text-white font-bold rounded-full hover:bg-orange-600 shadow-md text-sm">
+              🏪 전체 Agent 보러가기 →
+            </button>
+          </Link>
+        </div>
+      </section>
+
       {/* 가격 비교 */}
       <section className="py-16 px-5 md:px-10 bg-gradient-to-br from-orange-500 to-amber-500 text-white text-center">
         <div className="max-w-2xl mx-auto">
@@ -201,7 +248,7 @@ export default function SMBPage() {
             당신의 노하우를 AI Agent로 만들어 소상공인에게 판매하세요.<br />
             수수료 0%로 시작할 수 있어요.
           </p>
-          <Link href="/register">
+          <Link href="/smb/register">
             <button className="px-8 py-3 bg-gray-900 text-white font-bold rounded-full hover:bg-gray-700 text-sm">
               전문가로 등록하기 →
             </button>
