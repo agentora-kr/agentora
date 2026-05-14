@@ -10,41 +10,29 @@ export default function SMBLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      <nav className="fixed left-0 right-0 top-0 z-50 h-[72px] border-b border-gray-100 bg-white shadow-sm lg:h-14">
-        <div className="mx-auto flex h-full max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-10">
+      <header className="fixed left-0 right-0 top-0 z-50 border-b border-gray-100 bg-white shadow-sm">
+        <nav className="mx-auto flex h-[72px] max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:h-14 lg:px-10">
           <Link
             href="/smb"
             onClick={closeMenu}
             className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden whitespace-nowrap lg:flex-none"
           >
-            <span className="block min-w-0 truncate whitespace-nowrap text-[clamp(1.65rem,7vw,2rem)] font-extrabold leading-none tracking-normal text-gray-900 lg:text-lg">
+            <span className="block min-w-0 truncate text-[clamp(1.6rem,6vw,2rem)] font-extrabold leading-none text-gray-900 lg:text-lg">
               Agentora
             </span>
-
-            <span className="block shrink-0 whitespace-nowrap rounded-full border border-orange-200 bg-orange-50 px-2 py-1 text-[clamp(0.75rem,3.4vw,0.9rem)] font-extrabold leading-none text-orange-600 [word-break:keep-all] lg:px-1.5 lg:py-0.5 lg:text-[10px]">
+            <span className="shrink-0 whitespace-nowrap rounded-full border border-orange-200 bg-orange-50 px-2 py-1 text-[clamp(0.72rem,3vw,0.88rem)] font-extrabold leading-none text-orange-600 [word-break:keep-all] lg:px-1.5 lg:py-0.5 lg:text-[10px]">
               소상공인
             </span>
           </Link>
 
           <div className="hidden items-center gap-3 whitespace-nowrap lg:flex">
-            <Link
-              href="/smb/agents"
-              className="whitespace-nowrap px-4 py-2 text-sm font-semibold text-gray-600 hover:text-orange-500 [word-break:keep-all]"
-            >
+            <Link href="/smb/agents" className="px-4 py-2 text-sm font-semibold text-gray-600 hover:text-orange-500">
               Agent 목록
             </Link>
-
-            <Link
-              href="/smb/register"
-              className="whitespace-nowrap px-4 py-2 text-sm font-semibold text-gray-600 hover:text-orange-500 [word-break:keep-all]"
-            >
+            <Link href="/smb/register" className="px-4 py-2 text-sm font-semibold text-gray-600 hover:text-orange-500">
               전문가 등록
             </Link>
-
-            <Link
-              href="/login"
-              className="whitespace-nowrap rounded-full bg-orange-500 px-5 py-2 text-sm font-bold text-white shadow-sm hover:bg-orange-600 [word-break:keep-all]"
-            >
+            <Link href="/login" className="rounded-full bg-orange-500 px-5 py-2 text-sm font-bold text-white shadow-sm hover:bg-orange-600">
               무료 시작
             </Link>
           </div>
@@ -62,73 +50,45 @@ export default function SMBLayout({ children }: { children: React.ReactNode }) {
             aria-controls="smb-mobile-menu"
           >
             {menuOpen ? (
-              <svg
-                width="28"
-                height="28"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.8"
-                strokeLinecap="round"
-              >
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round">
                 <line x1="18" y1="6" x2="6" y2="18" />
                 <line x1="6" y1="6" x2="18" y2="18" />
               </svg>
             ) : (
-              <svg
-                width="30"
-                height="30"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.8"
-                strokeLinecap="round"
-              >
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round">
                 <line x1="4" y1="6" x2="20" y2="6" />
                 <line x1="4" y1="12" x2="20" y2="12" />
                 <line x1="4" y1="18" x2="20" y2="18" />
               </svg>
             )}
           </button>
-        </div>
-      </nav>
+        </nav>
 
-      {menuOpen && (
-        <div
-          id="smb-mobile-menu"
-          className="fixed left-0 right-0 top-[72px] z-40 border-b border-gray-100 bg-white shadow-sm lg:hidden"
-        >
-          <div className="px-8 pb-8 pt-8">
-            <div className="flex flex-col gap-8">
-              <Link
-                href="/smb/agents"
-                onClick={closeMenu}
-                className="text-xl font-extrabold leading-none text-gray-900 [word-break:keep-all]"
-              >
-                Agent 목록
-              </Link>
+        {menuOpen && (
+          <div id="smb-mobile-menu" className="border-t border-gray-100 bg-white lg:hidden">
+            <div className="px-8 pb-8 pt-8">
+              <div className="flex flex-col gap-8">
+                <Link href="/smb/agents" onClick={closeMenu} className="text-xl font-extrabold text-gray-900">
+                  Agent 목록
+                </Link>
+                <Link href="/smb/register" onClick={closeMenu} className="text-xl font-extrabold text-gray-900">
+                  전문가 등록
+                </Link>
+              </div>
 
-              <Link
-                href="/smb/register"
-                onClick={closeMenu}
-                className="text-xl font-extrabold leading-none text-gray-900 [word-break:keep-all]"
-              >
-                전문가 등록
-              </Link>
-            </div>
-
-            <div className="mt-9 border-t border-gray-100 pt-6">
-              <Link
-                href="/login"
-                onClick={closeMenu}
-                className="flex h-14 w-full items-center justify-center rounded-[18px] bg-orange-500 text-lg font-extrabold text-white shadow-sm hover:bg-orange-600 [word-break:keep-all]"
-              >
-                무료로 시작하기
-              </Link>
+              <div className="mt-9 border-t border-gray-100 pt-6">
+                <Link
+                  href="/login"
+                  onClick={closeMenu}
+                  className="flex h-14 w-full items-center justify-center rounded-[18px] bg-orange-500 text-lg font-extrabold text-white shadow-sm hover:bg-orange-600"
+                >
+                  무료로 시작하기
+                </Link>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </header>
 
       <main className="pt-[72px] lg:pt-14">{children}</main>
     </>
