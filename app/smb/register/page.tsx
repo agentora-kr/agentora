@@ -94,7 +94,7 @@ export default function SMBRegisterPage() {
         const res = await fetch("/api/upload-agent", { method: "POST", body: uploadFormData });
         const data = await res.json();
         if (data.url) { setHtmlUrl(data.url); setUploadStatus("done"); }
-        else { setUploadStatus("error"); setError("파일 업로드에 실패했어요."); }
+        else { setUploadStatus("error"); setError("파일 업로드에 실패했어요. 다시 시도해주세요."); }
       } catch { setUploadStatus("error"); setError("파일 업로드 중 오류가 발생했어요."); }
     };
     reader.readAsText(file);
@@ -112,7 +112,6 @@ export default function SMBRegisterPage() {
     }
 
     try {
-      // 로그인 상태 재확인
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         setError("로그인이 필요합니다. 먼저 로그인 후 다시 시도해주세요.");
@@ -120,11 +119,9 @@ export default function SMBRegisterPage() {
         return;
       }
 
-      // 전문가 여부 재확인
       const { data: existingExpert } = await supabase
         .from("experts").select("id").eq("user_id", user.id).maybeSingle();
 
-      // 전문가 아닐 때만 insert
       if (!existingExpert) {
         const { error: expertError } = await supabase.from("experts").insert({
           user_id: user.id,
@@ -140,17 +137,17 @@ export default function SMBRegisterPage() {
         });
 
         if (expertError) {
-          console.error("experts insert 에러:", expertError);
-          // 중복 에러면 무시하고 진행
+          console.error("전문가 등록 에러:", expertError);
           if (!expertError.message.includes("duplicate") && !expertError.message.includes("violates")) {
-            throw new Error(`전문가 등록 실패: ${expertError.message}`);
+            setError("전문가 등록에 실패했어요. 잠시 후 다시 시도해주세요.");
+            setLoading(false);
+            return;
           }
         } else {
           await supabase.from("profiles").update({ role: "expert" }).eq("id", user.id);
         }
       }
 
-      // Agent 등록
       const { error: agentError } = await supabase.from("agents").insert({
         name: form.agentName,
         description: form.agentDesc,
@@ -169,14 +166,16 @@ export default function SMBRegisterPage() {
       });
 
       if (agentError) {
-        console.error("agents insert 에러:", agentError);
-        throw new Error(`Agent 등록 실패: ${agentError.message}`);
+        console.error("Agent 등록 에러:", agentError);
+        setError("Agent 등록에 실패했어요. 입력 내용을 확인하고 다시 시도해주세요.");
+        setLoading(false);
+        return;
       }
 
       setSuccess(true);
-    } catch (err: any) {
+    } catch (err) {
       console.error("등록 에러:", err);
-      setError(err.message || "등록 중 오류가 발생했어요. 다시 시도해주세요.");
+      setError("일시적인 오류가 발생했어요. 잠시 후 다시 시도해주세요.");
     }
     setLoading(false);
   };
@@ -270,7 +269,6 @@ export default function SMBRegisterPage() {
           </div>
         )}
 
-        {/* STEP 1 */}
         {step === 1 && (
           <div className="flex flex-col gap-5">
             <div className="bg-white rounded-2xl border border-gray-200 p-5 md:p-6">
@@ -327,7 +325,6 @@ export default function SMBRegisterPage() {
           </div>
         )}
 
-        {/* STEP 2 */}
         {step === 2 && (
           <div className="flex flex-col gap-5">
             <div className="bg-white rounded-2xl border border-gray-200 p-5 md:p-6">
@@ -376,7 +373,6 @@ export default function SMBRegisterPage() {
           </div>
         )}
 
-        {/* STEP 3 */}
         {step === 3 && (
           <div className="flex flex-col gap-5">
             <div className="bg-white rounded-2xl border border-gray-200 p-5 md:p-6">
