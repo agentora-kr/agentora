@@ -10,7 +10,7 @@ const MAINTENANCE_MODE = true   // 대공사 끝나면 false로만 바꾸면 됩
 
 // 보수 기간에도 열어둘 경로
 const ALLOWED_PATHS = [
-  '/agents',       // 히비카 등 고객사 전용 링크
+  '/agents/24',       // 히비카 등 고객사 전용 링크
   '/api',          // chat-proxy 등 (막으면 에이전트 작동 불가)
   '/maintenance',  // 보수중 페이지 자체
 ]
