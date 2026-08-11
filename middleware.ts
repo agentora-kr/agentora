@@ -6,7 +6,7 @@ const LIMIT = 60
 const WINDOW = 60000
 
 /* ─── 보수중 설정 ─── */
-const MAINTENANCE_MODE = true   // 대공사 끝나면 false로만 바꾸면 됩니다
+const MAINTENANCE_MODE = false   // 대공사 끝나면 false로만 바꾸면 됩니다
 
 // 보수 기간에도 열어둘 경로
 const ALLOWED_PATHS = [

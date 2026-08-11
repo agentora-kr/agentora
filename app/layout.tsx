@@ -5,6 +5,9 @@ import { AuthProvider } from "./providers";
 import Navbar from "@/components/Navbar";
 import { Analytics } from '@vercel/analytics/next';
 
+// 보수중일 때 true — middleware.ts의 MAINTENANCE_MODE와 같은 값으로 맞춰주세요
+const MAINTENANCE_MODE = false;
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -35,8 +38,10 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <AuthProvider>
-          <Navbar />
-          <main className="pt-16 flex-1">{children}</main>
+          {!MAINTENANCE_MODE && <Navbar />}
+          <main className={MAINTENANCE_MODE ? "flex-1" : "pt-16 flex-1"}>
+            {children}
+          </main>
         </AuthProvider>
         <Analytics />
       </body>
