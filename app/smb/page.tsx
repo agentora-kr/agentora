@@ -48,11 +48,11 @@ export default function SMBPage() {
             <p className="text-gray-400 text-sm">가입 없이 바로 체험해보세요</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Link href="/agents/18">
+            <Link href="/agents/26">
               <div className="bg-orange-50 rounded-2xl border border-orange-200 p-6 text-left hover:border-orange-400 hover:shadow-md transition-all cursor-pointer">
                 <div className="text-3xl mb-3">📸</div>
-                <h3 className="font-extrabold text-gray-900 mb-1">콘텐츠 자동 생성</h3>
-                <p className="text-xs text-gray-500 leading-relaxed">사진 한 장으로 인스타·블로그·릴스·카톡 콘텐츠 자동 생성</p>
+                <h3 className="font-extrabold text-gray-900 mb-1">홍보글 자동생성</h3>
+                <p className="text-xs text-gray-500 leading-relaxed">사진 한 장이면 홍보 완성. 올리고 · 누르고 · 복사하면 끝</p>
                 <span className="inline-block mt-3 text-xs font-bold text-orange-500">무료 체험 →</span>
               </div>
             </Link>
@@ -119,7 +119,7 @@ export default function SMBPage() {
                   </li>
                 ))}
               </ul>
-              <Link href="/agents/18">
+              <Link href="/agents/26">
                 <button className="mt-5 px-6 py-3 bg-orange-500 text-white font-bold rounded-full hover:bg-orange-600 text-sm">
                   지금 무료 체험 →
                 </button>
