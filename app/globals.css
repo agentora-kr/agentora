@@ -3,6 +3,11 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --ink: #0F1B2E;
+  --accent: #FF5C1A;
+  --sand: #F6F3EE;
+  --line: #E8E6E1;
+  --muted: #5F5E5A;
 }
 
 @theme inline {
@@ -10,6 +15,11 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --color-ink: var(--ink);
+  --color-accent: var(--accent);
+  --color-sand: var(--sand);
+  --color-line: var(--line);
+  --color-muted: var(--muted);
 }
 
 @media (prefers-color-scheme: dark) {

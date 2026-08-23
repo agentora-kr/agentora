@@ -54,7 +54,7 @@ export default function Navbar() {
                 href={link.href}
                 className={`text-sm font-semibold transition-colors ${
                   pathname === link.href
-                    ? "text-blue-600"
+                    ? "text-ink"
                     : "text-gray-600 hover:text-gray-900"
                 }`}
               >
@@ -66,7 +66,7 @@ export default function Navbar() {
               onClick={() => setShowPricingPopup(true)}
               className={`text-sm font-semibold transition-colors ${
                 pathname === "/pricing"
-                  ? "text-blue-600"
+                  ? "text-ink"
                   : "text-gray-600 hover:text-gray-900"
               }`}
             >
@@ -79,20 +79,20 @@ export default function Navbar() {
             {isLoggedIn ? (
               <>
                 <Link href="/mypage">
-                  <button className="px-5 py-2 text-sm font-bold text-gray-700 border border-gray-200 rounded-full hover:bg-gray-50 transition-all">
+                  <button className="px-5 py-2 text-sm font-bold text-gray-700 border border-line rounded-lg hover:bg-gray-50 transition-all">
                     마이페이지
                   </button>
                 </Link>
                 <button
                   onClick={handleLogout}
-                  className="px-5 py-2 text-sm font-bold text-red-500 border border-red-200 rounded-full hover:bg-red-50 transition-all"
+                  className="px-5 py-2 text-sm font-bold text-ink border border-line rounded-lg hover:bg-gray-50 transition-all"
                 >
                   로그아웃
                 </button>
               </>
             ) : (
               <Link href="/login">
-                <button className="px-5 py-2 text-sm font-bold text-white bg-blue-600 rounded-full hover:bg-blue-700 transition-all shadow-sm">
+                <button className="px-5 py-2 text-sm font-bold text-white bg-ink rounded-lg hover:opacity-90 transition-all shadow-sm">
                   로그인
                 </button>
               </Link>
@@ -122,7 +122,7 @@ export default function Navbar() {
                   onClick={() => setMenuOpen(false)}
                   className={`py-3 text-sm font-semibold rounded-lg px-3 transition-colors ${
                     pathname === link.href
-                      ? "text-blue-600 bg-blue-50"
+                      ? "text-ink bg-sand"
                       : "text-gray-600 hover:bg-gray-50"
                   }`}
                 >
@@ -139,20 +139,20 @@ export default function Navbar() {
                 {isLoggedIn ? (
                   <>
                     <Link href="/mypage" onClick={() => setMenuOpen(false)}>
-                      <button className="w-full py-3 text-sm font-bold text-gray-700 border border-gray-200 rounded-full hover:bg-gray-50 transition-all">
+                      <button className="w-full py-3 text-sm font-bold text-gray-700 border border-line rounded-lg hover:bg-gray-50 transition-all">
                         마이페이지
                       </button>
                     </Link>
                     <button
                       onClick={() => { setMenuOpen(false); handleLogout(); }}
-                      className="w-full py-3 text-sm font-bold text-red-500 border border-red-200 rounded-full hover:bg-red-50 transition-all"
+                      className="w-full py-3 text-sm font-bold text-ink border border-line rounded-lg hover:bg-gray-50 transition-all"
                     >
                       로그아웃
                     </button>
                   </>
                 ) : (
                   <Link href="/login" onClick={() => setMenuOpen(false)}>
-                    <button className="w-full py-3 text-sm font-bold text-white bg-blue-600 rounded-full hover:bg-blue-700 transition-all">
+                    <button className="w-full py-3 text-sm font-bold text-white bg-ink rounded-lg hover:opacity-90 transition-all">
                       로그인
                     </button>
                   </Link>
@@ -166,15 +166,15 @@ export default function Navbar() {
       {/* 가격 안내 준비 중 팝업 */}
       {showPricingPopup && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setShowPricingPopup(false)}>
-          <div className="bg-white rounded-2xl p-8 shadow-2xl max-w-sm w-full mx-4 text-center" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-2xl p-8 border-[0.5px] border-line max-w-sm w-full mx-4 text-center" onClick={e => e.stopPropagation()}>
             <div className="text-4xl mb-4">💰</div>
-            <h3 className="text-xl font-extrabold text-gray-900 mb-2">가격 안내 준비 중!</h3>
-            <p className="text-gray-500 text-sm leading-relaxed mb-6">
+            <h3 className="text-xl font-medium tracking-[-0.03em] text-gray-900 mb-2">가격 안내 준비 중!</h3>
+            <p className="text-muted text-sm leading-relaxed tracking-[-0.02em] mb-6">
               현재 가격 체계를 정비하고 있어요.<br />곧 상세한 가격 안내를 제공할 예정이에요!
             </p>
             <button
               onClick={() => setShowPricingPopup(false)}
-              className="w-full py-3 bg-blue-600 text-white font-bold rounded-full hover:bg-blue-700 transition-all text-sm"
+              className="w-full py-3 bg-ink text-white font-bold rounded-lg hover:opacity-90 transition-all text-sm"
             >
               확인
             </button>
